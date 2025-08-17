@@ -1,86 +1,43 @@
- # VidsoNet - Microservices Architecture
+# VidsoNet - Microservices Architecture
 
-
-
- ## 📌 Giới thiệu
-
-VidsoNet là một hệ thống nền tảng chia sẻ video và mạng xã hội được triển khai theo kiến trúc   **microservices  **.  
-
-Dự án mô phỏng các tính năng chính như: quản lý video, bài viết, bình luận, chat giữa user, membership và thanh toán.  
-
-
+## 📌 Introduction
+VidsoNet is a video-sharing and social networking platform built with **microservices architecture**.  
+The project simulates key features such as video management, posts, comments, user chat, memberships, and payments.  
 
 ---
 
-
-
- ## 🏗️ Các Service chính
-
- -  **Auth Service **: Xác thực, đăng nhập, đăng ký, JWT/OAuth2.  
-
- -  **Profile Service **: Quản lý thông tin cá nhân và kênh của người dùng.  
-
- -  **Video Service **: Quản lý video, danh mục, playlist, tiến trình xem.  
-
- -  **Post Service **: Quản lý bài viết cộng đồng và reaction.  
-
- -  **Comment Service **: Quản lý comment cho video và bài viết.  
-
- -   **Membership Service  **: Quản lý gói hội viên.  
-
- -   **Payment Service  **: Xử lý thanh toán và giao dịch.  
-
- -   **Notification Service  **: Gửi và lưu thông báo.  
-
- -   **Chat Service  **: Hỗ trợ nhắn tin real-time giữa người dùng.  
-
- -   **Search Service  **: Tìm kiếm video, user, playlist, post.  
-
-
+## 🏗️ Main Services
+- **Auth Service**: Authentication, login, registration, JWT/OAuth2.  
+- **Profile Service**: Manage user profile and channel information.  
+- **Video Service**: Manage videos, categories, playlists, and watch progress.  
+- **Post Service**: Manage community posts and reactions.  
+- **Comment Service**: Manage comments for both videos and posts.  
+- **Membership Service**: Manage subscription plans.  
+- **Payment Service**: Handle payments and transactions.  
+- **Notification Service**: Deliver and store user notifications.  
+- **Chat Service**: Real-time messaging between users.  
+- **Search Service**: Full-text search for videos, users, playlists, and posts.  
 
 ---
 
-
-
- ## 🗄️ Database được sử dụng
-
- -   **PostgreSQL/MySQL  **: Lưu dữ liệu quan hệ (user, video metadata, posts, membership, payment).  
-
- -   **MongoDB  **: Lưu dữ liệu linh hoạt (comment, chat, notification).  
-
- -   **Redis  **: Lưu session, cache, message pub/sub cho chat và notification.  
-
- -   **Elasticsearch  **: Tìm kiếm full-text cho video, user, post.  
-
- -   **Object Storage (S3/MinIO)  **: Lưu file video và ảnh.  
-
-
+## 🗄️ Databases Used
+- **PostgreSQL/MySQL**: Relational data (users, video metadata, posts, memberships, payments).  
+- **MongoDB**: Flexible data (comments, chat, notifications).  
+- **Redis**: Session storage, caching, pub/sub for chat and notifications.  
+- **Elasticsearch**: Full-text search for videos, users, posts.  
+- **Object Storage (S3/MinIO)**: Store video files and images.  
 
 ---
 
-
-
- ## 🔗 Kiến trúc hệ thống
-
- -   **API Gateway  **: Routing request đến các service, xác thực JWT.  
-
- -   **Service Discovery  **: Đăng ký và phát hiện service (Eureka/Consul).  
-
- -   **Message Broker  **: Kafka/RabbitMQ để truyền sự kiện giữa các service.  
-
- -   **CI/CD  **: Docker  & Docker Compose để phát triển và triển khai.  
-
-
+## 🔗 System Architecture
+- **API Gateway**: Routes requests to services, handles JWT authentication.  
+- **Service Discovery**: Service registration and discovery (Eureka/Consul).  
+- **Message Broker**: Kafka/RabbitMQ for event-driven communication.  
+- **CI/CD**: Docker & Docker Compose for development and deployment.  
 
 ---
 
-
-
- ## 🚀 Cách chạy dự án (phát triển)
-
-1 . Clone repo
-
-```bash
-
-git clone https://github.com/hoaithi/video-social-networking-microservices
-
+## 🚀 How to Run (Development)
+1. Clone the repository
+   ```bash
+   git clone https://github.com/hoaithi/video-social-networking-microservice
