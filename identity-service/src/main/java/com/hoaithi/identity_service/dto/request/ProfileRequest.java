@@ -16,5 +16,6 @@ public class ProfileRequest {
     LocalDate dob;
     String city;
     String userId;
+    String email;
 }
 
