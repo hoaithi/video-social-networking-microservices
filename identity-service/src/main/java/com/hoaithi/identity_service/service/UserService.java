@@ -12,6 +12,7 @@ import com.hoaithi.identity_service.exception.ErrorCode;
 import com.hoaithi.identity_service.mapper.UserMapper;
 import com.hoaithi.identity_service.repository.RoleRepository;
 import com.hoaithi.identity_service.repository.UserRepository;
+import com.hoaithi.identity_service.repository.httpclient.ProfileClient;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -36,6 +37,7 @@ public class UserService {
     RoleRepository roleRepository;
     UserMapper userMapper;
     PasswordEncoder passwordEncoder;
+    ProfileClient profileClient;
 
     @Transactional
     public UserResponse createUser(UserCreationRequest request) {
@@ -49,6 +51,14 @@ public class UserService {
 
         user.setRoles(roles);
         user = userRepository.save(user);
+        ProfileRequest profileRequest = ProfileRequest.builder()
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .city(request.getCity())
+                .dob(request.getDob())
+                .userId(user.getId())
+                .build();
+        profileClient.createProfile(profileRequest);
         return userMapper.toUserResponse(user);
     }
 
