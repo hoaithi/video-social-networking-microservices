@@ -1,6 +1,7 @@
 package com.hoaithi.identity_service.dto.request;
 
 import com.hoaithi.identity_service.validator.DobConstraint;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -24,6 +25,9 @@ public class UserCreationRequest {
 
     @DobConstraint(min = 10, message = "INVALID_DOB")
     LocalDate dob;
+
+    @Email(message = "Email is not valid")
+    String email;
 
     String city;
 }

@@ -17,6 +17,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -38,6 +39,7 @@ public class UserService {
     UserMapper userMapper;
     PasswordEncoder passwordEncoder;
     ProfileClient profileClient;
+    KafkaTemplate<String, String> kafkaTemplate;
 
     @Transactional
     public UserResponse createUser(UserCreationRequest request) {
@@ -57,8 +59,11 @@ public class UserService {
                 .city(request.getCity())
                 .dob(request.getDob())
                 .userId(user.getId())
+                .email(request.getEmail())
                 .build();
+
         profileClient.createProfile(profileRequest);
+        kafkaTemplate.send("user-topic",request.getEmail());
         return userMapper.toUserResponse(user);
     }
 
