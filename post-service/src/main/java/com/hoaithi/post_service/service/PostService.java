@@ -3,6 +3,8 @@ package com.hoaithi.post_service.service;
 import com.hoaithi.post_service.dto.request.CreationPostRequest;
 import com.hoaithi.post_service.dto.response.PostResponse;
 import com.hoaithi.post_service.entity.Post;
+import com.hoaithi.post_service.exception.AppException;
+import com.hoaithi.post_service.exception.ErrorCode;
 import com.hoaithi.post_service.mapper.PostMapper;
 import com.hoaithi.post_service.repository.PostRepository;
 import com.hoaithi.post_service.repository.httpclient.FileClient;
@@ -43,11 +45,51 @@ public class PostService {
         return postMapper.toCreationPostResponse(postRepository.save(post));
 
     }
-
     public List<PostResponse> getMyPosts() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         List<Post> posts = postRepository.findByUserId(authentication.getName());
         return posts.stream().map(postMapper::toCreationPostResponse).toList();
     }
+
+    public List<PostResponse> getPostByUserId(String userId) {
+        if (userId == null || userId.isBlank()) {
+            throw new AppException(ErrorCode.USER_NOT_EXISTED);
+        }
+        List<Post> posts = postRepository.findByUserId(userId);
+        return posts.stream().map(postMapper::toCreationPostResponse).toList();
+    }
+
+    public PostResponse updatePost(String postId, CreationPostRequest request, MultipartFile image) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new AppException(ErrorCode.POST_NOT_EXISTED));
+        if(!isPostOwner(post.getUserId()))
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        if (request.getContent() != null) {
+            post.setContent(request.getContent());
+        }
+
+        if (image != null && !image.isEmpty()) {
+            post.setImageUrl(fileClient.uploadFile(image));
+        }
+
+        return postMapper.toCreationPostResponse(postRepository.save(post));
+    }
+
+    public void deletePost(String postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new AppException(ErrorCode.POST_NOT_EXISTED));
+        if (isPostOwner(post.getUserId())){
+            postRepository.delete(post);
+        } else {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+    }
+
+    private boolean isPostOwner(String ownerId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getName();
+        return ownerId.equals(userId);
+    }
+
 }

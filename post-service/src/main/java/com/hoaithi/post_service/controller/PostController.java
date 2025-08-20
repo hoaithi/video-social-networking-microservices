@@ -38,4 +38,35 @@ public class PostController {
                 .result(postService.getMyPosts())
                 .build();
     }
+
+    @GetMapping("/{userId}")
+    public ApiResponse<?> getPostByUserId(@PathVariable String userId) {
+        return ApiResponse.<List<PostResponse>>builder()
+                .message("Retrieved posts by user ID successfully")
+                .result(postService.getPostByUserId(userId))
+                .build();
+    }
+
+    @PutMapping("/{postId}")
+    public ApiResponse<PostResponse> updatePost(
+            @PathVariable String postId,
+            @RequestPart(value = "post", required = false) CreationPostRequest request,
+            @RequestPart(value = "image", required = false) MultipartFile image) {
+        PostResponse response = postService.updatePost(postId, request, image);
+        return ApiResponse.<PostResponse>builder()
+                .message("Post updated successfully")
+                .result(response)
+                .build();
+    }
+
+    @DeleteMapping("/{postId}")
+    public ApiResponse<Void> deletePost(@PathVariable String postId) {
+        postService.deletePost(postId);
+        return ApiResponse.<Void>builder()
+                .message("Post deleted successfully")
+                .result(null)
+                .build();
+    }
+
+
 }
