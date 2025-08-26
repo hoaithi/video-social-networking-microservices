@@ -42,15 +42,19 @@ public class PostService {
                 .content(request.getContent())
                 .imageUrl(fileClient.uploadFile(image))
                 .build();
+
         return postMapper.toCreationPostResponse(postRepository.save(post));
 
     }
+
+
     public List<PostResponse> getMyPosts() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         List<Post> posts = postRepository.findByUserId(authentication.getName());
         return posts.stream().map(postMapper::toCreationPostResponse).toList();
     }
+
 
     public List<PostResponse> getPostByUserId(String userId) {
         if (userId == null || userId.isBlank()) {

@@ -18,5 +18,4 @@ public class Post {
     String userId;
     String content;
     String imageUrl;
-
 }

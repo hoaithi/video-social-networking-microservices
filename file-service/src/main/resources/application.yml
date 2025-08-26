@@ -12,6 +12,6 @@ spring:
 aws:
   s3:
     bucket-name: profile-image-s3
-    region: ap-southeast-1   # Singapore region (g?n VN nhanh h?n)
+    region: ap-southeast-1   # Singapore region
     access-key: AKIA3WR6QX4QMPHGG3GQ
     secret-key: 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

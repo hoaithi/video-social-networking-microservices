@@ -20,7 +20,7 @@ public class NotificationController {
      *
      * @param email The message received from the Kafka topic.
      */
-    @KafkaListener(topics = "user-topic")
+    @KafkaListener(topics = "user-topic", groupId = "notification-group")
     public void createUserNotification(String email) {
         emailService.sendEmail(email,
                 "Welcome to our service, Video Social Networking Platform"

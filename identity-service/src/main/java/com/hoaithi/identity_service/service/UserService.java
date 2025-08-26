@@ -63,7 +63,10 @@ public class UserService {
                 .build();
 
         Object profile = profileClient.createProfile(profileRequest);
+
+        // publish event to kafka
         kafkaTemplate.send("user-topic",request.getEmail());
+
         return userMapper.toUserResponse(user);
     }
 
