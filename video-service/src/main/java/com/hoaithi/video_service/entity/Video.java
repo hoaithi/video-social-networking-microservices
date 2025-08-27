@@ -17,17 +17,17 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class Video {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
 
     private String title;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    private Integer duration;
+    private String duration;
 
-    private Boolean isPremium;
+    private boolean isPremium;
 
     @Column(name = "thumbnail_url")
     private String thumbnailUrl;
@@ -48,5 +48,5 @@ public class Video {
     private Long dislikeCount = 0L;
 
     @Column(name = "user_id")
-    private Long userId;
+    private String userId;
 }
