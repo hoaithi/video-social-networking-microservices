@@ -76,4 +76,9 @@ public class ProfileService {
     }
 
 
+    public ProfileResponse getMyFile() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Profile profile = profileRepository.findByUserId(authentication.getName());
+        return profileMapper.toProfileResponse(profile);
+    }
 }

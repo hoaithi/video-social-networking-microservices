@@ -38,6 +38,14 @@ public class ProfileController {
         return ResponseEntity.ok(profile);
     }
 
+    @GetMapping("/my-profile")
+    public ApiResponse<ProfileResponse> getMyProfile(){
+        ProfileResponse response = profileService.getMyFile();
+        return ApiResponse.<ProfileResponse>builder()
+                .result(response)
+                .build();
+    }
+
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<UpdateProfileResponse> updateProfile(
             @PathVariable String id,

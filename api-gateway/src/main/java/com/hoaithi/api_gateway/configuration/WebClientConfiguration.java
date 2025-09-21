@@ -21,7 +21,7 @@ public class WebClientConfiguration {
     @Bean
     public CorsWebFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        config.addAllowedOrigin("http://localhost:3000"); // cho phép từ FE
+        config.addAllowedOrigin("*"); // cho phép từ FE
         config.addAllowedMethod("*"); // GET, POST, PUT, DELETE...
         config.addAllowedHeader("*"); // cho phép tất cả headers
 
