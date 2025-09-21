@@ -53,10 +53,10 @@ public class ProfileService {
     public UpdateProfileResponse updateProfile(String id, UpdateProfileRequest profileRequest, MultipartFile avatar, MultipartFile banner) {
         Profile profile = profileRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Profile not found with id " + id));
-        if(!avatar.isEmpty()){
+        if(avatar != null){
             profile.setAvatarUrl(fileClient.uploadFile(avatar));
         }
-        if(!banner.isEmpty()){
+        if(banner != null){
             profile.setBannerUrl(fileClient.uploadFile(banner));
         }
         if (profileRequest.getFirstName() != null) {
