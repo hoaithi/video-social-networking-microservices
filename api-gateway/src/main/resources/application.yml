@@ -10,7 +10,7 @@ spring:
       server:
         webflux:
           routes:
-            # Route 1: User Service
+            # Route 1: Identity Service
             - id: identity-service
               uri: http://localhost:8080
               predicates:
@@ -26,14 +26,14 @@ spring:
                 - StripPrefix=2
             # Route 3: Notification Service
             - id: notification-service
-              uri: http://localhost:8083
+              uri: http://localhost:8082
               predicates:
                 - Path=${app.api-prefix}/notification/**
               filters:
                 - StripPrefix=2
             # Route 4: Post Service
             - id: post-service
-              uri: http://localhost:8084
+              uri: http://localhost:8083
               predicates:
                 - Path=${app.api-prefix}/post/**
               filters:

@@ -48,4 +48,18 @@ public class AuthenticationController {
         authenticationService.logout(request);
         return ApiResponse.<Void>builder().build();
     }
+
+    @PostMapping("/forget-password")
+    ApiResponse<Object> forgetPassword(@RequestBody ForgetPasswordRequest request){
+        return ApiResponse.<Object>builder()
+                .message(authenticationService.forgetPassword(request.getEmail()))
+                .build();
+    }
+
+    @PostMapping("/reset-password")
+    ApiResponse<Object> resetPassword(@RequestBody ResetPasswordRequest request){
+        return ApiResponse.<Object>builder()
+                .result(authenticationService.resetPassword(request))
+                .build();
+    }
 }

@@ -1,23 +1,26 @@
 server:
-  port: 8083
+  port: 8082
 spring:
   application:
   name: notification-service
-  data:
-    mongodb:
-      uri="mongodb://root:root@localhost:27017/notification-service?authSource=admin":
+#  data:
+#    mongodb:
+#      uri="mongodb://root:root@localhost:27017/notification-service?authSource=admin":
   kafka:
-    bootstrap-servers: localhost:9094
+    bootstrap-servers: ${KAFKA_HOST:localhost:9094}
     consumer:
       group-id: notification-group
       auto-offset-reset: earliest
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
   mail:
     host: smtp.gmail.com
     port: 587
     username: tranthi2965@gmail.com
-    password: zbde iiqd dsdb tuuz
+    password: rjgt mthd tlev govq
     properties:
       mail:
         smtp:

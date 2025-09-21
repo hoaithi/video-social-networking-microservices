@@ -8,7 +8,6 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="file-service" />
-        <module name="notification-service" />
         <module name="ai-service" />
       </profile>
       <profile name="Annotation profile for api-gateway" enabled="true">
@@ -21,7 +20,7 @@
         </processorPath>
         <module name="api-gateway" />
       </profile>
-      <profile name="Annotation profile for video-service" enabled="true">
+      <profile name="Annotation profile for notification-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
@@ -33,8 +32,9 @@
         </processorPath>
         <module name="profile-service" />
         <module name="post-service" />
-        <module name="video-service" />
         <module name="identity-service" />
+        <module name="video-service" />
+        <module name="notification-service" />
       </profile>
     </annotationProcessing>
   </component>

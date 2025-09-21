@@ -30,6 +30,7 @@ public class ProfileController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ProfileResponse> getProfileById(@PathVariable String id) {
+
         ProfileResponse profile = profileService.getProfileById(id);
         if (profile == null) {
             return ResponseEntity.notFound().build();

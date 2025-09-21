@@ -38,6 +38,8 @@ public class ApiGatewayFilter implements GlobalFilter, Ordered {
     @NonFinal
     private String[] publicEndpoints = {
             "/identity/auth/token",
+            "/identity/auth/forget-password",
+            "/identity/auth/reset-password",
             "/identity/auth/introspect",
             "/identity/users/register"
     };

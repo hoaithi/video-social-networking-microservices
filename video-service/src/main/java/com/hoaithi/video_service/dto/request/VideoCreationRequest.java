@@ -10,5 +10,5 @@ import lombok.*;
 public class VideoCreationRequest {
     private String title;
     private String description;
-    private Boolean isPremium;
+    private boolean isPremium;
 }

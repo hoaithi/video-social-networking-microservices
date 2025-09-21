@@ -2,10 +2,7 @@ package com.hoaithi.video_service.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -15,6 +12,7 @@ import java.time.LocalDateTime;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
 public class Video {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -25,7 +23,7 @@ public class Video {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    private String duration;
+    private double duration;
 
     private boolean isPremium;
 
@@ -39,12 +37,15 @@ public class Video {
     private LocalDateTime publishedAt;
 
     @Column(name = "view_count")
+    @Builder.Default
     private Long viewCount = 0L;
 
     @Column(name = "like_count")
+    @Builder.Default
     private Long likeCount = 0L;
 
     @Column(name = "dislike_count")
+    @Builder.Default
     private Long dislikeCount = 0L;
 
     @Column(name = "user_id")

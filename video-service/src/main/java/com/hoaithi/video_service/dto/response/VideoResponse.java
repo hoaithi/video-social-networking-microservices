@@ -11,9 +11,9 @@ public class VideoResponse {
     private String id;
     private String title;
     private String description;
-    private Integer duration; // in seconds
-    private Boolean isPremium;
+    private double duration; // in seconds
+    private boolean isPremium;
     private String thumbnailUrl;
     private String videoUrl;
-    private Long userId;
+    private String userId;
 }

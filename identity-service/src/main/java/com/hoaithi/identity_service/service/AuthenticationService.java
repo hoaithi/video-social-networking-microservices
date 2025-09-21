@@ -1,10 +1,8 @@
 package com.hoaithi.identity_service.service;
 
 
-import com.hoaithi.identity_service.dto.request.AuthenticationRequest;
-import com.hoaithi.identity_service.dto.request.IntrospectRequest;
-import com.hoaithi.identity_service.dto.request.LogoutRequest;
-import com.hoaithi.identity_service.dto.request.RefreshRequest;
+import com.hoaithi.event.dto.ForgetPasswordEvent;
+import com.hoaithi.identity_service.dto.request.*;
 import com.hoaithi.identity_service.dto.response.AuthenticationResponse;
 import com.hoaithi.identity_service.dto.response.IntrospectResponse;
 import com.hoaithi.identity_service.entity.InvalidatedToken;
@@ -24,6 +22,8 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,9 +32,8 @@ import org.springframework.util.CollectionUtils;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Date;
-import java.util.StringJoiner;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -43,10 +42,44 @@ import java.util.UUID;
 public class AuthenticationService {
     UserRepository userRepository;
     InvalidatedTokenRepository invalidatedTokenRepository;
+    KafkaTemplate<String, Object> kafkaTemplate;
+    RedisTemplate<String, String> redisTemplate;
+    PasswordEncoder passwordEncoder;
 
     @NonFinal
     @Value("${jwt.signerKey}")
     protected String signerKey;
+
+    public boolean resetPassword(ResetPasswordRequest request){
+        String email = request.getEmail();
+        String key = "OTP:" +email;
+        String otp = redisTemplate.opsForValue().get(key);
+        redisTemplate.delete(key);
+        boolean isValid = Objects.equals(otp, request.getOtp());
+        if(isValid){
+            User user = userRepository.findByEmail(email);
+            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+            userRepository.save(user);
+            return true;
+        }
+        return false;
+    }
+
+    public String forgetPassword(String email){
+        boolean emailVerified = userRepository.existsByEmail(email);
+        if(!emailVerified){
+            return "email is not exist";
+        }else{
+            String otp =  String.valueOf(new Random().nextInt(900000) + 100000);
+            redisTemplate.opsForValue().set("OTP:" +email, otp, 5, TimeUnit.MINUTES);
+            ForgetPasswordEvent event = ForgetPasswordEvent.builder()
+                    .email(email)
+                    .otp(otp)
+                    .build();
+            kafkaTemplate.send("forget-password", event);
+            return "we just sent otp";
+        }
+    }
 
     public IntrospectResponse introspect(IntrospectRequest request) throws JOSEException, ParseException {
         var token = request.getToken();

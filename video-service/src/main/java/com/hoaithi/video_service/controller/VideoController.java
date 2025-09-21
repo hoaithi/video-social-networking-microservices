@@ -7,10 +7,7 @@ import com.hoaithi.video_service.service.VideoService;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
@@ -30,6 +27,14 @@ public class VideoController {
     ) {
         VideoResponse response = videoService.createVideo(videoFile, thumbnailFile, request);
 
+        return ApiResponse.<VideoResponse>builder()
+                .result(response)
+                .build();
+    }
+
+    @GetMapping("/{id}")
+    public ApiResponse<VideoResponse> getVideoById(@PathVariable("id") String id) {
+        VideoResponse response = videoService.getVideoById(id);
         return ApiResponse.<VideoResponse>builder()
                 .result(response)
                 .build();
