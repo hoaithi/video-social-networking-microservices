@@ -6,9 +6,9 @@ spring:
   application:
     name: profile-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/profile_db
-    username: admin
-    password: admin123
+    url: ${DBMS_CONNECTION:jdbc:postgresql://localhost:5432/profile_db}
+    username: ${DBMS_USERNAME:postgres}
+    password:  ${DBMS_PASSWORD:123456}
     driver-class-name: org.postgresql.Driver
   jpa:
     properties:

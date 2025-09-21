@@ -1,5 +1,6 @@
 package com.hoaithi.identity_service.service;
 
+import com.hoaithi.event.dto.CreationUserEvent;
 import com.hoaithi.identity_service.constant.PredefinedRole;
 import com.hoaithi.identity_service.dto.request.ProfileRequest;
 import com.hoaithi.identity_service.dto.request.UserCreationRequest;
@@ -39,7 +40,7 @@ public class UserService {
     UserMapper userMapper;
     PasswordEncoder passwordEncoder;
     ProfileClient profileClient;
-    KafkaTemplate<String, String> kafkaTemplate;
+    KafkaTemplate<String, Object> kafkaTemplate;
 
     @Transactional
     public UserResponse createUser(UserCreationRequest request) {
@@ -52,6 +53,7 @@ public class UserService {
         roleRepository.findById(PredefinedRole.USER_ROLE).ifPresent(roles::add);
 
         user.setRoles(roles);
+        user.setEmail(request.getEmail());
         user = userRepository.save(user);
         ProfileRequest profileRequest = ProfileRequest.builder()
                 .firstName(request.getFirstName())
@@ -63,7 +65,11 @@ public class UserService {
                 .build();
 
         Object profile = profileClient.createProfile(profileRequest);
-        kafkaTemplate.send("user-topic",request.getEmail());
+
+        // publish event to     kafka
+        kafkaTemplate.send("user-topic", CreationUserEvent.builder()
+                .email(request.getEmail())
+                .build());
         return userMapper.toUserResponse(user);
     }
 
