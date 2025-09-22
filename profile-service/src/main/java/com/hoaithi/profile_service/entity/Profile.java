@@ -20,9 +20,7 @@ public class Profile {
     @Column
     String userId;
     @Column
-    String firstName;
-    @Column
-    String lastName;
+    String fullName;
     @Column
     LocalDate dob;
     @Column

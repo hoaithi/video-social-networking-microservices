@@ -12,8 +12,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UpdateProfileResponse {
-    String firstName;
-    String lastName;
+    String fullName;
     LocalDate dob;
     String city;
     String avatarUrl;

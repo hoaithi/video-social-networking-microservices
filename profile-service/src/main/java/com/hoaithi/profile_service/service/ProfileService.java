@@ -59,11 +59,8 @@ public class ProfileService {
         if(banner != null){
             profile.setBannerUrl(fileClient.uploadFile(banner));
         }
-        if (profileRequest.getFirstName() != null) {
-            profile.setFirstName(profileRequest.getFirstName());
-        }
-        if (profileRequest.getLastName() != null) {
-            profile.setLastName(profileRequest.getLastName());
+        if (profileRequest.getFullName() != null) {
+            profile.setFullName(profileRequest.getFullName());
         }
         if (profileRequest.getDob() != null) {
             profile.setDob(profileRequest.getDob());
@@ -74,7 +71,6 @@ public class ProfileService {
         profile = profileRepository.save(profile);
         return profileMapper.toUpdateProfileResponse(profile);
     }
-
 
     public ProfileResponse getMyFile() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
