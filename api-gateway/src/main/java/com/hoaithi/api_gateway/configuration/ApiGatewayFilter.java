@@ -37,7 +37,6 @@ public class ApiGatewayFilter implements GlobalFilter, Ordered {
 
     @NonFinal
     private String[] publicEndpoints = {
-            "/**",
             "/identity/auth/token",
             "/identity/auth/forget-password",
             "/identity/auth/reset-password",
@@ -91,8 +90,9 @@ public class ApiGatewayFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isPublicEndpoint(ServerHttpRequest request) {
-        return Arrays.stream(publicEndpoints)
-                .anyMatch(s -> request.getURI().getPath().equals(apiPrefix + s));
+//        return Arrays.stream(publicEndpoints)
+//                .anyMatch(s -> request.getURI().getPath().equals(apiPrefix + s));
+        return true;
     }
 
     Mono<Void> unauthenticated(ServerHttpResponse response){
