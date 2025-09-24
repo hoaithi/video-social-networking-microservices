@@ -1,5 +1,7 @@
 server:
-  port: 7777
+  port: 8084
+  servlet:
+    context-path: /ai
 spring:
   application:
     name: ai-service
@@ -11,3 +13,8 @@ spring:
         completions-path: /v1beta/openai/chat/completions
         options:
           model: gemini-2.0-flash
+
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB

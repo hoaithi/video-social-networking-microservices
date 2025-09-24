@@ -20,7 +20,7 @@
         </processorPath>
         <module name="api-gateway" />
       </profile>
-      <profile name="Annotation profile for identity-service" enabled="true">
+      <profile name="Annotation profile for video-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
@@ -32,8 +32,8 @@
         </processorPath>
         <module name="profile-service" />
         <module name="post-service" />
-        <module name="identity-service" />
         <module name="video-service" />
+        <module name="identity-service" />
         <module name="notification-service" />
       </profile>
     </annotationProcessing>

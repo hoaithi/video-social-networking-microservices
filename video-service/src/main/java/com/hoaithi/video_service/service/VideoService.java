@@ -3,9 +3,11 @@ package com.hoaithi.video_service.service;
 import com.hoaithi.video_service.dto.request.VideoCreationRequest;
 import com.hoaithi.video_service.dto.response.VideoResponse;
 import com.hoaithi.video_service.entity.Video;
+import com.hoaithi.video_service.entity.VideoHistory;
 import com.hoaithi.video_service.exception.AppException;
 import com.hoaithi.video_service.exception.ErrorCode;
 import com.hoaithi.video_service.mapper.VideoMapper;
+import com.hoaithi.video_service.repository.HistoryRepository;
 import com.hoaithi.video_service.repository.httpclient.FileClient;
 import com.hoaithi.video_service.repository.VideoRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -29,15 +32,30 @@ public class VideoService {
     VideoRepository videoRepository;
     VideoMapper videoMapper;
     FileClient fileClient;
+    HistoryRepository historyRepository;
 
-    public List<Video> getAllVideos() {
-        return videoRepository.findAll();
+    public List<VideoResponse> getVideos() {
+        List<Video> videos = videoRepository.findAll();
+        List<VideoResponse> videoResponses = new ArrayList<>();
+        for(Video video: videos){
+            VideoResponse videoResponse = videoMapper.toVideoResponse(video);
+            videoResponse.setPremium(video.isPremium());
+            videoResponses.add(videoResponse);
+        }
+        return videoResponses;
     }
 
     public VideoResponse getVideoById(String id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Video video = videoRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
-        return videoMapper.toVideoResponse(video);
+        video.setViewCount(video.getViewCount()+1);
+        historyRepository.save(VideoHistory.builder()
+                .video(video)
+                .userId(authentication.getName())
+                .build());
+        return videoMapper.toVideoResponse(videoRepository.save(video));
     }
+
 
     public Video updateVideo(String id, Video newVideo) {
         return videoRepository.findById(id).map(video -> {
@@ -51,7 +69,9 @@ public class VideoService {
     }
 
     public void deleteVideo(String id) {
-        videoRepository.deleteById(id);
+        Video video = videoRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
+        videoRepository.delete(video);
     }
 
     public VideoResponse createVideo(MultipartFile videoFile, MultipartFile thumbnailFile, VideoCreationRequest request) {
@@ -79,7 +99,10 @@ public class VideoService {
             e.printStackTrace();
         }
         video.setDuration(Math.round(durationInSeconds));
-        return videoMapper.toVideoResponse(videoRepository.save(video));
+        Video createdVideo = videoRepository.save(video);
+        VideoResponse response = videoMapper.toVideoResponse(createdVideo);
+        response.setPremium(createdVideo.isPremium());
+        return response;
     }
 
 
@@ -91,6 +114,7 @@ public class VideoService {
             return durationInSeconds;
         }
     }
+
 
 }
 

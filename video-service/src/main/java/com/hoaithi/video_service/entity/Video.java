@@ -1,10 +1,13 @@
 package com.hoaithi.video_service.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Entity;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "videos")
@@ -40,14 +43,23 @@ public class Video {
     @Builder.Default
     private Long viewCount = 0L;
 
-    @Column(name = "like_count")
+    @Column(name = "heart_count")
     @Builder.Default
-    private Long likeCount = 0L;
-
-    @Column(name = "dislike_count")
-    @Builder.Default
-    private Long dislikeCount = 0L;
+    private Long heartCount = 0L;
 
     @Column(name = "user_id")
     private String userId;
+
+
+
+    // relationships
+    @OneToMany(mappedBy = "video")
+    private List<VideoPlaylist> videoPlaylists = new ArrayList<>();
+
+    @OneToMany(mappedBy = "video")
+    private List<VideoHistory> videoHistories = new ArrayList<>();
+
+    @OneToMany(mappedBy = "video")
+    private List<VideoTym> videoTyms = new ArrayList<>();
+
 }
