@@ -1,11 +1,11 @@
 package com.hoaithi.ai_service.controller;
 
 import com.hoaithi.ai_service.dto.ChatRequest;
+import com.hoaithi.ai_service.dto.TranscriptionRequest;
+import com.hoaithi.ai_service.dto.TranscriptionResponse;
 import com.hoaithi.ai_service.service.ChatService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 public class ChatController {
@@ -16,5 +16,11 @@ public class ChatController {
     @PostMapping("/chat")
     public String chat(@RequestBody ChatRequest request) {
         return chatService.chat(request);
+    }
+    @PostMapping("/transcribe")
+    public TranscriptionResponse transcribe(
+            @RequestPart("video")MultipartFile video,
+            @RequestPart("message") String message) throws Exception {
+        return chatService.transcribeToString(video, message);
     }
 }

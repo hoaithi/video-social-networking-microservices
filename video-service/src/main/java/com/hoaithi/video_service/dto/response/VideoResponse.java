@@ -1,5 +1,6 @@
 package com.hoaithi.video_service.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 @Builder
@@ -12,8 +13,12 @@ public class VideoResponse {
     private String title;
     private String description;
     private double duration; // in seconds
+    @JsonProperty("isPremium")
     private boolean isPremium;
     private String thumbnailUrl;
     private String videoUrl;
-    private String userId;
+    private String profileId;
+    Long heartCount;
+    Long commentCount;
+    boolean hearted;
 }

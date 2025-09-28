@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "videos")
@@ -40,14 +42,27 @@ public class Video {
     @Builder.Default
     private Long viewCount = 0L;
 
-    @Column(name = "like_count")
+    @Column(name = "heart_count")
     @Builder.Default
-    private Long likeCount = 0L;
+    private Long heartCount = 0L;
 
-    @Column(name = "dislike_count")
+    @Column(name = "comment_count")
     @Builder.Default
-    private Long dislikeCount = 0L;
+    private Long commentCount = 0L;
 
-    @Column(name = "user_id")
-    private String userId;
+    @Column(name = "profile_id")
+    private String profileId;
+
+
+
+    // relationships
+    @OneToMany(mappedBy = "video")
+    private List<VideoPlaylist> videoPlaylists = new ArrayList<>();
+
+    @OneToMany(mappedBy = "video")
+    private List<VideoHistory> videoHistories = new ArrayList<>();
+
+    @OneToMany(mappedBy = "video")
+    private List<VideoHeart> videoHearts = new ArrayList<>();
+
 }

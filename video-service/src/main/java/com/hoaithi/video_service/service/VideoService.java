@@ -1,11 +1,16 @@
 package com.hoaithi.video_service.service;
 
 import com.hoaithi.video_service.dto.request.VideoCreationRequest;
+import com.hoaithi.video_service.dto.request.VideoUpdationRequest;
 import com.hoaithi.video_service.dto.response.VideoResponse;
 import com.hoaithi.video_service.entity.Video;
+import com.hoaithi.video_service.entity.VideoHistory;
 import com.hoaithi.video_service.exception.AppException;
 import com.hoaithi.video_service.exception.ErrorCode;
 import com.hoaithi.video_service.mapper.VideoMapper;
+import com.hoaithi.video_service.repository.HistoryRepository;
+import com.hoaithi.video_service.repository.VideoHeartRepository;
+import com.hoaithi.video_service.repository.httpclient.CommentClient;
 import com.hoaithi.video_service.repository.httpclient.FileClient;
 import com.hoaithi.video_service.repository.VideoRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -29,33 +35,58 @@ public class VideoService {
     VideoRepository videoRepository;
     VideoMapper videoMapper;
     FileClient fileClient;
+    CommentClient commentClient;
+    HistoryRepository historyRepository;
+    VideoHeartRepository videoHeartRepository;
 
-    public List<Video> getAllVideos() {
-        return videoRepository.findAll();
+    public List<VideoResponse> getVideos() {
+        List<Video> videos = videoRepository.findAll();
+        List<VideoResponse> videoResponses = new ArrayList<>();
+        for(Video video: videos){
+            VideoResponse videoResponse = videoMapper.toVideoResponse(video);
+            videoResponse.setPremium(video.isPremium());
+            videoResponses.add(videoResponse);
+        }
+        return videoResponses;
     }
 
-    public VideoResponse getVideoById(String id) {
-        Video video = videoRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
-        return videoMapper.toVideoResponse(video);
+    public VideoResponse getVideoById(String videoId) {
+        String currentProfileId = getCurrentUserId();
+        Video video = videoRepository.findById(videoId).orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
+        video.setViewCount(video.getViewCount()+1);
+        video.setCommentCount(commentClient.countComment(videoId).getResult().getCommentCount());
+        historyRepository.save(VideoHistory.builder()
+                .video(video)
+                .profileId(currentProfileId)
+                .build());
+        VideoResponse response = videoMapper.toVideoResponse(videoRepository.save(video));
+        response.setHearted(videoHeartRepository.existsByProfileIdAndVideoId(currentProfileId, videoId));
+        return response;
     }
 
-    public Video updateVideo(String id, Video newVideo) {
-        return videoRepository.findById(id).map(video -> {
-            video.setTitle(newVideo.getTitle());
-            video.setDescription(newVideo.getDescription());
-            video.setDuration(newVideo.getDuration());
-            video.setThumbnailUrl(newVideo.getThumbnailUrl());
-            video.setVideoUrl(newVideo.getVideoUrl());
-            return videoRepository.save(video);
-        }).orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
+
+    public VideoResponse updateVideo(String videoId, VideoUpdationRequest request) {
+        Video video = videoRepository.findById(videoId).orElseThrow(()-> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
+        if(!video.getProfileId().equals(getCurrentUserId())){
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        video.setThumbnailUrl(request.getThumbnailUrl());
+        video.setDescription(request.getDescription());
+        video.setTitle(request.getTitle());
+        return videoMapper.toVideoResponse(videoRepository.save(video));
     }
 
     public void deleteVideo(String id) {
-        videoRepository.deleteById(id);
+        Video video = videoRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
+        if(!video.getProfileId().equals(getCurrentUserId())){
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        videoRepository.delete(video);
     }
 
     public VideoResponse createVideo(MultipartFile videoFile, MultipartFile thumbnailFile, VideoCreationRequest request) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentProfileId = getCurrentUserId();
 
         Video video = Video.builder()
                 .title(request.getTitle())
@@ -65,7 +96,7 @@ public class VideoService {
         video.setVideoUrl(fileClient.uploadFile(videoFile));
         video.setThumbnailUrl(fileClient.uploadFile(thumbnailFile));
         video.setPublishedAt(LocalDateTime.now());
-        video.setUserId(authentication.getName());
+        video.setProfileId(currentProfileId);
         double durationInSeconds = 0.0;
         try {
             // convert MultipartFile -> File tạm
@@ -79,7 +110,10 @@ public class VideoService {
             e.printStackTrace();
         }
         video.setDuration(Math.round(durationInSeconds));
-        return videoMapper.toVideoResponse(videoRepository.save(video));
+        Video createdVideo = videoRepository.save(video);
+        VideoResponse response = videoMapper.toVideoResponse(createdVideo);
+        response.setPremium(createdVideo.isPremium());
+        return response;
     }
 
 
@@ -91,6 +125,10 @@ public class VideoService {
             return durationInSeconds;
         }
     }
+    private String getCurrentUserId(){
+        return SecurityContextHolder.getContext().getAuthentication().getName();
+    }
+
 
 }
 

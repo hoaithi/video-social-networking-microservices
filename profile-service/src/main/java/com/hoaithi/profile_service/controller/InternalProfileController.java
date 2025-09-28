@@ -6,14 +6,13 @@ import com.hoaithi.profile_service.dto.response.ApiResponse;
 import com.hoaithi.profile_service.dto.response.ProfileResponse;
 import com.hoaithi.profile_service.service.ProfileService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController()
 @RequiredArgsConstructor
@@ -40,6 +39,21 @@ public class InternalProfileController {
                 .message("create profile successful")
                 .build();
     }
+    @GetMapping("/internal/users/{userId}")
+    @Operation(
+            summary = "Get profile by userId",
+            description = "Retrieve detailed profile information of a user by userId"
+    )
+    public ApiResponse<ProfileResponse> getProfileByUserId(
+            @Parameter(description = "The userId of the user profile")
+            @PathVariable String userId) {
+        ProfileResponse profile = profileService.getProfileByUserId(userId);
+        return ApiResponse.<ProfileResponse>builder()
+                .message("Profile retrieved successfully")
+                .result(profile)
+                .build();
+    }
+
 
 
 

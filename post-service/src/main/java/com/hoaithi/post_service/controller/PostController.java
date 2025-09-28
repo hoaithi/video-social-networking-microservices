@@ -7,24 +7,28 @@ import com.hoaithi.post_service.service.PostService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@RequestMapping("/post")
 public class PostController {
     PostService postService;
 
-    @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<PostResponse> createPost(
-            @RequestPart(value = "post", required = false) CreationPostRequest request,
-            @RequestPart(value = "image", required = false) MultipartFile image)
-    {
-        PostResponse response = postService.createPost(request, image);
+            @RequestPart(name = "image") MultipartFile image,
+            @RequestPart(name = "post") CreationPostRequest post
+
+    ){
+        PostResponse response = postService.createPost(post, image);
         return ApiResponse.<PostResponse>builder()
                 .message("Post created successfully")
                 .result(response)
@@ -39,8 +43,9 @@ public class PostController {
                 .build();
     }
 
+
     @GetMapping("/{userId}")
-    public ApiResponse<?> getPostByUserId(@PathVariable String userId) {
+    public ApiResponse<List<PostResponse>> getPostByUserId(@PathVariable String userId) {
         return ApiResponse.<List<PostResponse>>builder()
                 .message("Retrieved posts by user ID successfully")
                 .result(postService.getPostByUserId(userId))

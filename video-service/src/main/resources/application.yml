@@ -9,8 +9,8 @@ spring:
       max-request-size: 50MB
   datasource:
     url: jdbc:postgresql://localhost:5432/video_db
-    username: admin
-    password: admin123
+    username: ${DBMS_USERNAME:postgres}
+    password: ${DBMS_PASSWORD:123456}
     driver-class-name: org.postgresql.Driver
   jpa:
     properties:

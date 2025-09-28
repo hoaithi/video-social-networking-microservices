@@ -38,3 +38,31 @@ spring:
                 - Path=${app.api-prefix}/post/**
               filters:
                 - StripPrefix=2
+            # Route 5: Ai Service
+            - id: ai-service
+              uri: http://localhost:8084
+              predicates:
+                - Path=${app.api-prefix}/ai/**
+              filters:
+                - StripPrefix=2
+            # Route 5: Video Service
+            - id: video-service
+              uri: http://localhost:8085
+              predicates:
+                - Path=${app.api-prefix}/video/**
+              filters:
+                - StripPrefix=2
+            # Route 5: Video Service
+            - id: video-service
+              uri: http://localhost:8085
+              predicates:
+                - Path=${app.api-prefix}/playlist/**
+              filters:
+                - StripPrefix=2
+            # Route 6: Comment Service
+            - id: comment-service
+              uri: http://localhost:8086
+              predicates:
+                - Path=${app.api-prefix}/comment/**
+              filters:
+                - StripPrefix=2
