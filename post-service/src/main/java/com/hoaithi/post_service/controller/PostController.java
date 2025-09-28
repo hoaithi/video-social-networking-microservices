@@ -48,7 +48,7 @@ public class PostController {
     public ApiResponse<List<PostResponse>> getPostByUserId(@PathVariable String userId) {
         return ApiResponse.<List<PostResponse>>builder()
                 .message("Retrieved posts by user ID successfully")
-                .result(postService.getPostByUserId(userId))
+                .result(postService.getPostByProfileId(userId))
                 .build();
     }
 

@@ -1,5 +1,6 @@
 package com.hoaithi.comment_service.dto.response;
 
+import com.hoaithi.comment_service.entity.Owner;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -13,10 +14,7 @@ import java.time.LocalDateTime;
 public class CommentResponse {
     String id;
     String parentCommentId;
-    String itemId;
-    String profileId;
-    String fullName;
-    String avatarUrl;
+    Owner owner;
     String content;
     boolean hearted;
     LocalDateTime createdDate;

@@ -13,7 +13,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 public class ProfileResponse {
     String id;
-    String profileId;
+    String userId;
     String fullName;
     LocalDate dob;
     String city;

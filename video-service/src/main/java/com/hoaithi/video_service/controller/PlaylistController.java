@@ -1,14 +1,15 @@
 package com.hoaithi.video_service.controller;
 
+import com.hoaithi.video_service.dto.request.PlaylistCreationRequest;
 import com.hoaithi.video_service.dto.response.ApiResponse;
+import com.hoaithi.video_service.dto.response.PlaylistResponse;
 import com.hoaithi.video_service.dto.response.VideoResponse;
 import com.hoaithi.video_service.service.HistoryService;
 import com.hoaithi.video_service.service.HeartService;
+import com.hoaithi.video_service.service.PlaylistService;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -19,23 +20,40 @@ import java.util.List;
 public class PlaylistController {
     HistoryService historyService;
     HeartService heartService;
+    PlaylistService playlistService;
 
 
-    @GetMapping()
-    public ApiResponse<?> getPlaylists(){
-        return ApiResponse.<Object>builder().build();
+    @GetMapping("/{profileId}")
+    public ApiResponse<List<PlaylistResponse>> getPlaylists(@PathVariable String profileId){
+        return ApiResponse.<List<PlaylistResponse>>builder()
+                .result(playlistService.getPlaylists(profileId))
+                .build();
+    }
+
+    @GetMapping("/my-playlist")
+    public ApiResponse<List<PlaylistResponse>> getMyPlaylist(){
+        return ApiResponse.<List<PlaylistResponse>>builder()
+                .result(playlistService.getMyPlaylists())
+                .build();
+    }
+
+    @PostMapping
+    public ApiResponse<PlaylistResponse> createPlaylist(@RequestBody PlaylistCreationRequest request){
+        return ApiResponse.<PlaylistResponse>builder()
+                .result(playlistService.createPlaylist(request))
+                .build();
     }
 
     @GetMapping("/history")
-    public ApiResponse<List<VideoResponse>> getHistory(){
+    public ApiResponse<List<VideoResponse>> getHistories(){
         return ApiResponse.<List<VideoResponse>>builder()
                 .result(historyService.getVideoHistories())
                 .build();
     }
-    @GetMapping("/tym")
-    public ApiResponse<?> getTym(){
+    @GetMapping("/heart")
+    public ApiResponse<?> getHearts(){
         return ApiResponse.<List<VideoResponse>>builder()
-                .result(heartService.getVideoTyms())
+                .result(heartService.getVideoHearts())
                 .build();
     }
 }

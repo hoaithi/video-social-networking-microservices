@@ -6,6 +6,7 @@ import com.hoaithi.comment_service.dto.response.CommentResponse;
 import com.hoaithi.comment_service.dto.response.ProfileResponse;
 import com.hoaithi.comment_service.entity.Comment;
 import com.hoaithi.comment_service.entity.CommentHeart;
+import com.hoaithi.comment_service.entity.Owner;
 import com.hoaithi.comment_service.exception.AppException;
 import com.hoaithi.comment_service.exception.ErrorCode;
 import com.hoaithi.comment_service.mapper.CommentMapper;
@@ -35,9 +36,11 @@ public class CommentService {
         ProfileResponse response = profileClient.getMyProfile().getResult();
 
         Comment comment = commentMapper.toComment(request);
-        comment.setAvatarUrl(response.getAvatarUrl());
-        comment.setFullName(response.getFullName());
-        comment.setProfileId(response.getProfileId());
+        comment.setOwner(Owner.builder()
+                        .avatarUrl(response.getAvatarUrl())
+                        .fullName(response.getFullName())
+                        .profileId(response.getId())
+                .build());
         Comment savedComment = commentRepository.save(comment);
         return commentMapper.toCreationCommentResponse(savedComment);
     }
@@ -67,7 +70,7 @@ public class CommentService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_EXISTED));
-        if(!comment.getProfileId().equals(authentication.getName())){
+        if(!comment.getOwner().getProfileId().equals(authentication.getName())){
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
         comment.setContent(request.getContent());
@@ -78,7 +81,7 @@ public class CommentService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_EXISTED));
-        if(!comment.getProfileId().equals(authentication.getName())){
+        if(!comment.getOwner().getProfileId().equals(authentication.getName())){
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
         commentRepository.deleteById(commentId);
