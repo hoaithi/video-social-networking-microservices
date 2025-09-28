@@ -3,7 +3,7 @@ package com.hoaithi.video_service.controller;
 import com.hoaithi.video_service.dto.request.VideoCreationRequest;
 import com.hoaithi.video_service.dto.response.ApiResponse;
 import com.hoaithi.video_service.dto.response.VideoResponse;
-import com.hoaithi.video_service.service.TymService;
+import com.hoaithi.video_service.service.HeartService;
 import com.hoaithi.video_service.service.VideoService;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -22,7 +22,7 @@ import java.util.List;
 public class VideoController {
 
     VideoService videoService;
-    TymService tymService;
+    HeartService heartService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<VideoResponse> createVideo(
@@ -58,7 +58,7 @@ public class VideoController {
     @PostMapping("/{id}/tym")
     public ApiResponse<?> tymVideo(@PathVariable("id") String id){
         return ApiResponse.<Object>builder()
-                .result( tymService.tymVideo(id))
+                .result( heartService.tymVideo(id))
                 .build();
     }
 

@@ -9,5 +9,5 @@ import java.util.List;
 
 @Repository
 public interface HistoryRepository extends JpaRepository<VideoHistory, Long> {
-    List<VideoHistory> findByUserId(String userId);
+    List<VideoHistory> findByProfileId(String profileId);
 }

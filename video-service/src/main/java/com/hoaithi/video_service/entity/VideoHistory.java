@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "video_history" , uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"video_id", "user_id"})
+@Table(name = "video_histories" , uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"video_id", "profile_id"})
 })
 @Getter
 @Setter
@@ -21,6 +21,6 @@ public class VideoHistory {
     @JoinColumn(name = "video_id", nullable = false)
     private Video video;
 
-    @JoinColumn(name = "user_id", nullable = false)
-    private String userId;
+    @JoinColumn(name = "profile_id", nullable = false)
+    private String profileId;
 }

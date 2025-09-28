@@ -6,6 +6,8 @@ import com.hoaithi.profile_service.dto.request.UpdateProfileRequest;
 import com.hoaithi.profile_service.dto.response.ProfileResponse;
 import com.hoaithi.profile_service.dto.response.UpdateProfileResponse;
 import com.hoaithi.profile_service.entity.Profile;
+import com.hoaithi.profile_service.exception.AppException;
+import com.hoaithi.profile_service.exception.ErrorCode;
 import com.hoaithi.profile_service.mapper.ProfileMapper;
 import com.hoaithi.profile_service.repository.ProfileRepository;
 import com.hoaithi.profile_service.repository.httpclient.FileClient;
@@ -52,7 +54,7 @@ public class ProfileService {
 
     public UpdateProfileResponse updateProfile(String id, UpdateProfileRequest profileRequest, MultipartFile avatar, MultipartFile banner) {
         Profile profile = profileRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Profile not found with id " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_EXISTED));
         if(avatar != null){
             profile.setAvatarUrl(fileClient.uploadFile(avatar));
         }
@@ -73,8 +75,14 @@ public class ProfileService {
     }
 
     public ProfileResponse getMyFile() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Profile profile = profileRepository.findByUserId(authentication.getName());
+        String profileId = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info(profileId);
+        Profile profile = profileRepository.findById(profileId).orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_EXISTED));
+        return profileMapper.toProfileResponse(profile);
+    }
+
+    public ProfileResponse getProfileByUserId(String userId) {
+        Profile profile = profileRepository.findByUserId(userId);
         return profileMapper.toProfileResponse(profile);
     }
 }

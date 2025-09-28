@@ -11,7 +11,8 @@ import lombok.experimental.FieldDefaults;
 @Builder
 public class PostResponse {
     String id;
-    String userId;
+    String profileId;
     String content;
     String imageUrl;
+    Long heartCount;
 }

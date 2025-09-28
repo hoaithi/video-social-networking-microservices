@@ -35,39 +35,36 @@ public class PostService {
      */
     public PostResponse createPost(CreationPostRequest request, MultipartFile image) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        log.info("post service log {}", authentication.getDetails());
         // Simulate post creation logic
         Post post = Post.builder()
-                .userId(authentication.getName())
+                .profileId(authentication.getName())
                 .content(request.getContent())
                 .imageUrl(fileClient.uploadFile(image))
                 .build();
-
         return postMapper.toCreationPostResponse(postRepository.save(post));
-
     }
 
 
     public List<PostResponse> getMyPosts() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        List<Post> posts = postRepository.findByUserId(authentication.getName());
+        List<Post> posts = postRepository.findByProfileId(authentication.getName());
         return posts.stream().map(postMapper::toCreationPostResponse).toList();
     }
 
 
-    public List<PostResponse> getPostByUserId(String userId) {
-        if (userId == null || userId.isBlank()) {
+    public List<PostResponse> getPostByProfileId(String profileId) {
+
+        if (profileId == null || profileId.isBlank()) {
             throw new AppException(ErrorCode.USER_NOT_EXISTED);
         }
-        List<Post> posts = postRepository.findByUserId(userId);
+        List<Post> posts = postRepository.findByProfileId(profileId);
         return posts.stream().map(postMapper::toCreationPostResponse).toList();
     }
 
     public PostResponse updatePost(String postId, CreationPostRequest request, MultipartFile image) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new AppException(ErrorCode.POST_NOT_EXISTED));
-        if(!isPostOwner(post.getUserId()))
+        if(!isPostOwner(post.getProfileId()))
             throw new AppException(ErrorCode.UNAUTHORIZED);
         if (request.getContent() != null) {
             post.setContent(request.getContent());
@@ -83,7 +80,7 @@ public class PostService {
     public void deletePost(String postId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new AppException(ErrorCode.POST_NOT_EXISTED));
-        if (isPostOwner(post.getUserId())){
+        if (isPostOwner(post.getProfileId())){
             postRepository.delete(post);
         } else {
             throw new AppException(ErrorCode.UNAUTHORIZED);

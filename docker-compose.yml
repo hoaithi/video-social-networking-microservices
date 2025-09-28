@@ -27,8 +27,20 @@ services:
     networks:
       - microservices-net
 
-  redis:
+  mongo:
+    image: mongo
+    container_name: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+      MONGO_INITDB_DATABASE: post-service
+    networks:
+      - microservices-net
 
+  redis:
     image: redis:7.2
     container_name: redis
     restart: always

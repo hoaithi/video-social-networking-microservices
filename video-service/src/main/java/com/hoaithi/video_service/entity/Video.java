@@ -1,6 +1,5 @@
 package com.hoaithi.video_service.entity;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Entity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -47,8 +46,12 @@ public class Video {
     @Builder.Default
     private Long heartCount = 0L;
 
-    @Column(name = "user_id")
-    private String userId;
+    @Column(name = "comment_count")
+    @Builder.Default
+    private Long commentCount = 0L;
+
+    @Column(name = "profile_id")
+    private String profileId;
 
 
 
@@ -60,6 +63,6 @@ public class Video {
     private List<VideoHistory> videoHistories = new ArrayList<>();
 
     @OneToMany(mappedBy = "video")
-    private List<VideoTym> videoTyms = new ArrayList<>();
+    private List<VideoHeart> videoHearts = new ArrayList<>();
 
 }

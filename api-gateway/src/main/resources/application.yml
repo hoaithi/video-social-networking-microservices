@@ -59,3 +59,10 @@ spring:
                 - Path=${app.api-prefix}/playlist/**
               filters:
                 - StripPrefix=2
+            # Route 6: Comment Service
+            - id: comment-service
+              uri: http://localhost:8086
+              predicates:
+                - Path=${app.api-prefix}/comment/**
+              filters:
+                - StripPrefix=2

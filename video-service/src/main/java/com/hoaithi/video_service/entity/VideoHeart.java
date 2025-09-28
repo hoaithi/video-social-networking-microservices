@@ -4,15 +4,15 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "video_tym" , uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"video_id", "user_id"})
+@Table(name = "video_hearts" , uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"video_id", "profile_id"})
 })
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class VideoTym {
+public class VideoHeart {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,6 +21,6 @@ public class VideoTym {
     @JoinColumn(name = "video_id", nullable = false)
     private Video video;
 
-    @JoinColumn(name = "user_id", nullable = false)
-    private String userId;
+    @JoinColumn(name = "profile_id", nullable = false)
+    private String profileId;
 }

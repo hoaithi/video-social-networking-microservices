@@ -56,8 +56,7 @@ public class UserService {
         user.setEmail(request.getEmail());
         user = userRepository.save(user);
         ProfileRequest profileRequest = ProfileRequest.builder()
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
+                .fullName(request.getFullName())
                 .city(request.getCity())
                 .dob(request.getDob())
                 .userId(user.getId())

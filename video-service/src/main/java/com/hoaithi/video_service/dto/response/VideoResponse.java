@@ -17,5 +17,8 @@ public class VideoResponse {
     private boolean isPremium;
     private String thumbnailUrl;
     private String videoUrl;
-    private String userId;
+    private String profileId;
+    Long heartCount;
+    Long commentCount;
+    boolean hearted;
 }

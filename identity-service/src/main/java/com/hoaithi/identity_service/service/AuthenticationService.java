@@ -11,6 +11,7 @@ import com.hoaithi.identity_service.exception.AppException;
 import com.hoaithi.identity_service.exception.ErrorCode;
 import com.hoaithi.identity_service.repository.InvalidatedTokenRepository;
 import com.hoaithi.identity_service.repository.UserRepository;
+import com.hoaithi.identity_service.repository.httpclient.ProfileClient;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
@@ -45,6 +46,7 @@ public class AuthenticationService {
     KafkaTemplate<String, Object> kafkaTemplate;
     RedisTemplate<String, String> redisTemplate;
     PasswordEncoder passwordEncoder;
+    ProfileClient profileClient;
 
     @NonFinal
     @Value("${jwt.signerKey}")
@@ -155,9 +157,10 @@ public class AuthenticationService {
         Date expiryTime = new Date(Instant.ofEpochMilli(issueTime.getTime())
                 .plus(1, ChronoUnit.HOURS)
                 .toEpochMilli());
+        String profileId = profileClient.getProfileByUserId(user.getId()).getResult().getId();
 
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
-                .subject(user.getId())
+                .subject(profileId)
                 .issuer("vidsonet.microservice.com")
                 .issueTime(issueTime)
                 .expirationTime(expiryTime)

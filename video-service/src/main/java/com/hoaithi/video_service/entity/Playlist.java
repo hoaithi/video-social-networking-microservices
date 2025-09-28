@@ -23,7 +23,7 @@ public class Playlist {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    private String userId;
+    private String profileId;
 
     //relationships
 

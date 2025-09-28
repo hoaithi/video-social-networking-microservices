@@ -27,7 +27,7 @@ public class HistoryService {
 
     public List<VideoResponse> getVideoHistories(){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        List<VideoHistory> videoHistories = historyRepository.findByUserId(authentication.getName());
+        List<VideoHistory> videoHistories = historyRepository.findByProfileId(authentication.getName());
         List<Video> videos = videoHistories.stream()
                 .map(VideoHistory::getVideo)
                 .toList();

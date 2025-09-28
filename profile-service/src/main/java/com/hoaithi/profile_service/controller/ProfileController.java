@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+@Slf4j
 @RestController()
 @RequestMapping("/users")
 @RequiredArgsConstructor
@@ -53,6 +55,8 @@ public class ProfileController {
                 .result(profile)
                 .build();
     }
+
+
 
     @GetMapping("/my-profile")
     @Operation(

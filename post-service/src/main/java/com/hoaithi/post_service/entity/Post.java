@@ -15,7 +15,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class Post {
     @Id
     String id;
-    String userId;
+    String profileId;
     String content;
     String imageUrl;
+    @Builder.Default
+    Long heartCount = 0L;
 }

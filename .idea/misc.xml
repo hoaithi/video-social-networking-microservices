@@ -17,6 +17,7 @@
         <option value="$PROJECT_DIR$/post-service/pom.xml" />
         <option value="$PROJECT_DIR$/ai-service/pom.xml" />
         <option value="$PROJECT_DIR$/video-service/pom.xml" />
+        <option value="$PROJECT_DIR$/comment-service/pom.xml" />
       </list>
     </option>
   </component>

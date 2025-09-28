@@ -1,5 +1,6 @@
 package com.hoaithi.identity_service.mapper;
 
+import com.hoaithi.identity_service.dto.request.ProfileRequest;
 import com.hoaithi.identity_service.dto.request.UserCreationRequest;
 import com.hoaithi.identity_service.dto.request.UserUpdateRequest;
 import com.hoaithi.identity_service.dto.response.UserResponse;
@@ -16,4 +17,5 @@ public interface UserMapper {
 
     @Mapping(target = "roles", ignore = true)
     void updateUser(@MappingTarget User user, UserUpdateRequest request);
+
 }

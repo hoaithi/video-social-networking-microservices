@@ -9,10 +9,10 @@ import java.util.List;
 @Repository
 public interface PostRepository extends MongoRepository<Post, String> {
     /**
-     * Finds posts by user ID.
+     * Finds posts by profile ID.
      *
-     * @param userId the user ID
-     * @return a list of posts associated with the user ID
+     * @param profileId the profile ID
+     * @return a list of posts associated with the profile ID
      */
-    List<Post> findByUserId(String userId);
+    List<Post> findByProfileId(String profileId);
 }
