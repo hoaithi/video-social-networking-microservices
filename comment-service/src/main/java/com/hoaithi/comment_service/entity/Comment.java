@@ -19,9 +19,7 @@ public class Comment {
     String id;
     String itemId;
     String parentCommentId;
-    String profileId;
-    String fullName;
-    String avatarUrl;
+    Owner owner;
     String content;
     @Builder.Default
     LocalDateTime createdDate = LocalDateTime.now();

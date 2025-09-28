@@ -61,15 +61,18 @@ public class ProfileService {
         if(banner != null){
             profile.setBannerUrl(fileClient.uploadFile(banner));
         }
-        if (profileRequest.getFullName() != null) {
-            profile.setFullName(profileRequest.getFullName());
+        if(profileRequest != null){
+            if (profileRequest.getFullName() != null) {
+                profile.setFullName(profileRequest.getFullName());
+            }
+            if (profileRequest.getDob() != null) {
+                profile.setDob(profileRequest.getDob());
+            }
+            if (profileRequest.getCity() != null) {
+                profile.setCity(profileRequest.getCity());
+            }
         }
-        if (profileRequest.getDob() != null) {
-            profile.setDob(profileRequest.getDob());
-        }
-        if (profileRequest.getCity() != null) {
-            profile.setCity(profileRequest.getCity());
-        }
+
         profile = profileRepository.save(profile);
         return profileMapper.toUpdateProfileResponse(profile);
     }

@@ -55,10 +55,10 @@ public class VideoController {
                 .build();
     }
 
-    @PostMapping("/{id}/tym")
+    @PostMapping("/{id}/heart")
     public ApiResponse<?> tymVideo(@PathVariable("id") String id){
         return ApiResponse.<Object>builder()
-                .result( heartService.tymVideo(id))
+                .result( heartService.heartVideo(id))
                 .build();
     }
 

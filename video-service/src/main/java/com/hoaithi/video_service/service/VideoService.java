@@ -3,12 +3,15 @@ package com.hoaithi.video_service.service;
 import com.hoaithi.video_service.dto.request.VideoCreationRequest;
 import com.hoaithi.video_service.dto.request.VideoUpdationRequest;
 import com.hoaithi.video_service.dto.response.VideoResponse;
+import com.hoaithi.video_service.entity.Playlist;
 import com.hoaithi.video_service.entity.Video;
 import com.hoaithi.video_service.entity.VideoHistory;
+import com.hoaithi.video_service.entity.VideoPlaylist;
 import com.hoaithi.video_service.exception.AppException;
 import com.hoaithi.video_service.exception.ErrorCode;
 import com.hoaithi.video_service.mapper.VideoMapper;
 import com.hoaithi.video_service.repository.HistoryRepository;
+import com.hoaithi.video_service.repository.PlaylistRepository;
 import com.hoaithi.video_service.repository.VideoHeartRepository;
 import com.hoaithi.video_service.repository.httpclient.CommentClient;
 import com.hoaithi.video_service.repository.httpclient.FileClient;
@@ -17,7 +20,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,6 +40,7 @@ public class VideoService {
     CommentClient commentClient;
     HistoryRepository historyRepository;
     VideoHeartRepository videoHeartRepository;
+    PlaylistRepository playlistRepository;
 
     public List<VideoResponse> getVideos() {
         List<Video> videos = videoRepository.findAll();
@@ -48,6 +51,17 @@ public class VideoService {
             videoResponses.add(videoResponse);
         }
         return videoResponses;
+    }
+
+    public List<VideoResponse> getVideoByPlaylist(String playlistId){
+        Playlist playlist = playlistRepository.findById(playlistId)
+                .orElseThrow(() -> new AppException(ErrorCode.PLAYLIST_NOT_EXISTED));
+
+       return playlist.getVideoPlaylists()
+                .stream()
+                .map(VideoPlaylist::getVideo)
+                .map(videoMapper::toVideoResponse)
+                .toList();
     }
 
     public VideoResponse getVideoById(String videoId) {

@@ -14,7 +14,9 @@ public enum ErrorCode {
     USER_NOT_EXISTED(1005, "User not existed", HttpStatus.NOT_FOUND),
     UNAUTHENTICATED(1006, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
-    VIDEO_NOT_EXISTED(5001, "Video not existed", HttpStatus.NOT_FOUND);
+    VIDEO_NOT_EXISTED(5001, "Video not existed", HttpStatus.NOT_FOUND),
+    PLAYLIST_NOT_EXISTED(5002, "Playlist not existed", HttpStatus.NOT_FOUND)
+    ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;
