@@ -7,12 +7,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-@FeignClient(name = "profile-service", url = "http://localhost:8081/profile")
+@FeignClient(name = "profile-service", url = "http://localhost:8081")
 public interface ProfileClient {
-    @PostMapping("/internal/users")
+    @PostMapping("/internal/profile")
     public ApiResponse<ProfileResponse> createProfile(@RequestBody Object profileRequest);
 
-    @GetMapping("/internal/users/{userId}")
+    @GetMapping("/internal/profile/{userId}")
     public ApiResponse<ProfileResponse> getProfileByUserId(@PathVariable String userId);
 
 }

@@ -2,6 +2,7 @@ package com.hoaithi.video_service.service;
 
 import com.hoaithi.video_service.dto.request.VideoCreationRequest;
 import com.hoaithi.video_service.dto.request.VideoUpdationRequest;
+import com.hoaithi.video_service.dto.response.PagedResponse;
 import com.hoaithi.video_service.dto.response.VideoResponse;
 import com.hoaithi.video_service.entity.Playlist;
 import com.hoaithi.video_service.entity.Video;
@@ -20,6 +21,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -42,15 +47,40 @@ public class VideoService {
     VideoHeartRepository videoHeartRepository;
     PlaylistRepository playlistRepository;
 
-    public List<VideoResponse> getVideos() {
-        List<Video> videos = videoRepository.findAll();
-        List<VideoResponse> videoResponses = new ArrayList<>();
-        for(Video video: videos){
+    public PagedResponse<VideoResponse> getVideos(int page, int size){
+        Pageable pageable = PageRequest.of(page, size, Sort.by("publishedAt").descending());
+        Page<Video> videos = videoRepository.findAll(pageable);
+
+        Page<VideoResponse> responses = videos.map(video -> {
             VideoResponse videoResponse = videoMapper.toVideoResponse(video);
             videoResponse.setPremium(video.isPremium());
-            videoResponses.add(videoResponse);
-        }
-        return videoResponses;
+            return videoResponse;
+        });
+        return PagedResponse.<VideoResponse>builder()
+                .content(responses.getContent())
+                .page(responses.getNumber())
+                .totalPages(responses.getTotalPages())
+                .totalElements(responses.getTotalElements())
+                .size(responses.getSize())
+                .last(responses.isLast())
+                .build();
+    }
+    public PagedResponse<VideoResponse> getVideoByProfileId(String profileId, int page, int size) {
+        Pageable pageable= PageRequest.of(page,size,Sort.by("publishedAt").descending());
+        Page<Video> videos = videoRepository.findAllByProfileId(profileId, pageable);
+        Page<VideoResponse> responses = videos.map(video -> {
+            VideoResponse videoResponse = videoMapper.toVideoResponse(video);
+            videoResponse.setPremium(video.isPremium());
+            return videoResponse;
+        });
+        return PagedResponse.<VideoResponse>builder()
+                .content(responses.getContent())
+                .page(responses.getNumber())
+                .totalPages(responses.getTotalPages())
+                .totalElements(responses.getTotalElements())
+                .size(responses.getSize())
+                .last(responses.isLast())
+                .build();
     }
 
     public List<VideoResponse> getVideoByPlaylist(String playlistId){
@@ -142,6 +172,7 @@ public class VideoService {
     private String getCurrentUserId(){
         return SecurityContextHolder.getContext().getAuthentication().getName();
     }
+
 
 
 }

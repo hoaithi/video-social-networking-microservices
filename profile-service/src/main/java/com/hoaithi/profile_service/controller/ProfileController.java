@@ -22,7 +22,7 @@ import java.util.List;
 
 @Slf4j
 @RestController()
-@RequestMapping("/users")
+@RequestMapping("/profile")
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 @Tag(name = "Profile API", description = "Manage the user information")

@@ -15,7 +15,7 @@ This project is a microservices-based system for video sharing and social networ
 - **ai-service**: Reads the content of uploaded videos and recommends suitable titles using AI-powered analysis.
 
 ## Technologies
-- Java 17/21 (Spring Boot)
+- Java 21 (Spring Boot)
 - Maven
 - Docker & Docker Compose
 - Kafka (messaging)
@@ -41,15 +41,22 @@ docker-compose up
 ```
 
 ### 3. Access Services
-- **API Gateway**: http://localhost:8080
-- **Identity Service**: http://localhost:8081
+- **API Gateway**: http://localhost:8888
+- **Identity Service**: http://localhost:8080
+- **Profile Service**: http://localhost:8081
 - **Notification Service**: http://localhost:8082
-- **Profile Service**: http://localhost:8083
-- **Post Service**: http://localhost:8084
-- **Comment Service**: http://localhost:8085
-- **Video Service**: http://localhost:8086
-- **File Service**: http://localhost:8087
-- **AI Service**: http://localhost:8088
+- **Post Service**: http://localhost:8083
+- **AI Service**: http://localhost:8084
+- **Video Service**: http://localhost:8085
+- **Comment Service**: http://localhost:8086
+- **File Service**: http://localhost:8088
+
+### 4. Spring Documents
+
+  ```sh
+  http://localhost:{server-port}/swagger-ui/index.html
+  ```
+
 
 Other services use similar port mappings (see `docker-compose.yml`).
 

@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class InternalProfileController {
     ProfileService profileService;
 
-    @PostMapping("/internal/users")
+    @PostMapping("/internal/profile")
     @Operation(
             summary = "Create a new user profile (internal use)",
             description = """
@@ -39,7 +39,7 @@ public class InternalProfileController {
                 .message("create profile successful")
                 .build();
     }
-    @GetMapping("/internal/users/{userId}")
+    @GetMapping("/internal/profile/{userId}")
     @Operation(
             summary = "Get profile by userId",
             description = "Retrieve detailed profile information of a user by userId"
