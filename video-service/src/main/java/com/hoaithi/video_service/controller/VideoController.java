@@ -2,12 +2,15 @@ package com.hoaithi.video_service.controller;
 
 import com.hoaithi.video_service.dto.request.VideoCreationRequest;
 import com.hoaithi.video_service.dto.response.ApiResponse;
+import com.hoaithi.video_service.dto.response.PagedResponse;
 import com.hoaithi.video_service.dto.response.VideoResponse;
+import com.hoaithi.video_service.entity.Video;
 import com.hoaithi.video_service.service.HeartService;
 import com.hoaithi.video_service.service.VideoService;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,8 +20,8 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 @RequestMapping("/video")
+@FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 public class VideoController {
 
     VideoService videoService;
@@ -38,20 +41,36 @@ public class VideoController {
                 .build();
     }
 
-    @GetMapping()
-    public ApiResponse<List<VideoResponse>> getVideos(){
+    @GetMapping("/search")
+    public ApiResponse<PagedResponse<VideoResponse>> getVideos(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size
+    ){
 
-        return ApiResponse.<List<VideoResponse>>builder()
-                .result(videoService.getVideos())
+        return ApiResponse.<PagedResponse<VideoResponse>>builder()
+                .result(videoService.getVideos(page, size))
                 .message("Retrieve list of video successfully")
                 .build();
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/watch/{id}")
     public ApiResponse<VideoResponse> getVideoById(@PathVariable("id") String id) {
         VideoResponse response = videoService.getVideoById(id);
         return ApiResponse.<VideoResponse>builder()
                 .result(response)
+                .build();
+    }
+
+    @GetMapping("/{profileId}")
+    public ApiResponse<PagedResponse<VideoResponse>> getVideosByProfile(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size,
+            @PathVariable("profileId") String profileId
+    ){
+
+        return ApiResponse.<PagedResponse<VideoResponse>>builder()
+                .result(videoService.getVideoByProfileId(profileId, page,size))
+                .message("Retrieve list of video successfully")
                 .build();
     }
 

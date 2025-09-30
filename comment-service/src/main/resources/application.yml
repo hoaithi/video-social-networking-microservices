@@ -6,3 +6,7 @@ spring:
     data:
         mongodb:
             uri: mongodb://root:root@localhost:27017/comment-service?authSource=admin
+springdoc:
+    group-configs:
+        - group: comment
+          paths-to-match: /comment/**

@@ -1,7 +1,5 @@
 server:
   port: 8081
-  servlet:
-    context-path: /profile
 spring:
   application:
     name: profile-service
@@ -18,3 +16,9 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+springdoc:
+  group-configs:
+    - group: profile
+      paths-to-match: /profile/**
+    - group: internal
+      paths-to-match: /internal/profile/**

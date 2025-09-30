@@ -6,3 +6,7 @@ spring:
   data:
     mongodb:
       uri: mongodb://root:root@localhost:27017/post-service?authSource=admin
+springdoc:
+  group-configs:
+    - group: post
+      paths-to-match: /post/**
