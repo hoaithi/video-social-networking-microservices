@@ -3,8 +3,10 @@ package com.hoaithi.video_service.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
-@Table(name = "video_hearts" , uniqueConstraints = {
+@Table(name = "video_watch_laters" , uniqueConstraints = {
         @UniqueConstraint(columnNames = {"video_id", "profile_id"})
 })
 @Getter
@@ -12,7 +14,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class VideoHeart {
+public class VideoWatchLater {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,6 +23,10 @@ public class VideoHeart {
     @JoinColumn(name = "video_id", nullable = false)
     private Video video;
 
-    @JoinColumn(name = "profile_id", nullable = false)
+    @Column(name = "profile_id", nullable = false)
     private String profileId;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
 }

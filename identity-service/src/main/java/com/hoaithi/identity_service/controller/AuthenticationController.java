@@ -3,6 +3,7 @@ package com.hoaithi.identity_service.controller;
 
 import com.hoaithi.identity_service.dto.request.*;
 import com.hoaithi.identity_service.dto.response.AuthenticationResponse;
+import com.hoaithi.identity_service.dto.response.GoogleExchangeTokenResponse;
 import com.hoaithi.identity_service.dto.response.IntrospectResponse;
 import com.hoaithi.identity_service.service.AuthenticationService;
 import com.nimbusds.jose.JOSEException;
@@ -28,7 +29,20 @@ public class AuthenticationController {
         var result = authenticationService.authenticate(request);
         return ApiResponse.<AuthenticationResponse>builder().result(result).build();
     }
+    @PostMapping("/google")
+    ApiResponse<AuthenticationResponse> loginGoogle(@RequestBody GoogleLoginRequest request) {
+        return ApiResponse.<AuthenticationResponse>builder()
+                .result(authenticationService.loginGoogle(request))
+                .build();
+    }
 
+    @PostMapping("/create-password")
+    ApiResponse<Void> createPassword(@RequestBody ResetPasswordRequest request) {
+        authenticationService.createPassword(request);
+        return ApiResponse.<Void>builder()
+                .message("create password successfully")
+                .build();
+    }
     @PostMapping("/introspect")
     ApiResponse<IntrospectResponse> authenticate(@RequestBody IntrospectRequest request)
             throws ParseException, JOSEException {
@@ -48,6 +62,7 @@ public class AuthenticationController {
         authenticationService.logout(request);
         return ApiResponse.<Void>builder().build();
     }
+
 
     @PostMapping("/forget-password")
     ApiResponse<Object> forgetPassword(@RequestBody ForgetPasswordRequest request){

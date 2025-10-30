@@ -8,6 +8,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 @FeignClient(name = "profile-service", url = "http://localhost:8081/profile", configuration = AuthenticationRequestIntercepter.class)
 public interface ProfileClient {
-    @GetMapping("/users/my-profile")
+    @GetMapping("/my-profile")
     ApiResponse<ProfileResponse> getMyProfile();
 }

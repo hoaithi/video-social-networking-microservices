@@ -13,12 +13,13 @@ import java.time.LocalDateTime;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CommentResponse {
     String id;
+    String itemId;
     String parentCommentId;
+    String commentType;
     Owner owner;
     String content;
     boolean hearted;
-    LocalDateTime createdDate;
-    LocalDateTime updatedDate;
+    LocalDateTime createdAt;
+    LocalDateTime updatedAt;
     Long heartCount;
-
 }

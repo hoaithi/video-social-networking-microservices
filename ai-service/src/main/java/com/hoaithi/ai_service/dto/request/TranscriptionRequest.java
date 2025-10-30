@@ -1,4 +1,4 @@
-package com.hoaithi.ai_service.dto;
+package com.hoaithi.ai_service.dto.request;
 
 import org.springframework.web.multipart.MultipartFile;
 

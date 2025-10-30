@@ -1,5 +1,6 @@
 package com.hoaithi.comment_service.entity;
 
+import com.hoaithi.comment_service.enums.CommentType;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.annotation.Id;
@@ -18,13 +19,15 @@ public class Comment {
     @Id
     String id;
     String itemId;
+    String itemType;
+    CommentType commentType;
     String parentCommentId;
     Owner owner;
     String content;
     @Builder.Default
-    LocalDateTime createdDate = LocalDateTime.now();
+    LocalDateTime createdAt = LocalDateTime.now();
     @Builder.Default
-    LocalDateTime updatedDate = LocalDateTime.now();
+    LocalDateTime updatedAt = LocalDateTime.now();
     @Builder.Default
     Long heartCount = 0L;
 }

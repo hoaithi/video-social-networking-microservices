@@ -1,26 +1,23 @@
 package com.hoaithi.ai_service.service;
 
-import ch.qos.logback.core.net.server.Client;
-import com.hoaithi.ai_service.dto.ChatRequest;
-import com.hoaithi.ai_service.dto.TranscriptionRequest;
-import com.hoaithi.ai_service.dto.TranscriptionResponse;
+import com.hoaithi.ai_service.dto.request.ChatRequest;
+import com.hoaithi.ai_service.dto.response.DescriptionResponse;
+import com.hoaithi.ai_service.dto.response.TitleResponse;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.content.Media;
-import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MimeType;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
-import java.util.Map;
+import java.util.List;
 
 @Service
 public class ChatService {
@@ -31,12 +28,6 @@ public class ChatService {
     public ChatService(ChatClient.Builder chatClient) {
         this.chatClient = chatClient.build();
     }
-    /**
-     * Processes a chat request and returns the response.
-     *
-     * @param request the chat request containing the message
-     * @return the response message
-     */
     public String chat(ChatRequest request) {
         Prompt prompt = new Prompt(request.message());
         return chatClient
@@ -44,7 +35,7 @@ public class ChatService {
                 .call()
                 .content();
     }
-    public TranscriptionResponse transcribe(MultipartFile video, String message){
+    public TitleResponse transcribe(MultipartFile video, String message){
         Media media = new Media(MimeType.valueOf("video/mp4"), video.getResource());
         return chatClient.prompt()
                 .user(promptUserSpec -> promptUserSpec
@@ -52,20 +43,27 @@ public class ChatService {
                         .media(media)
                 )
                 .call()
-                .entity(TranscriptionResponse.class);
+                .entity(TitleResponse.class);
     }
-    public TranscriptionResponse transcribeToString(MultipartFile video, String message) throws Exception {
+
+
+    public List<TitleResponse> generateTilte(MultipartFile video) throws Exception {
         File audio = null;
+
         try {
             audio = extractAudio(video);
             Media audioMedia = new Media(MimeType.valueOf("audio/mp3"), new FileSystemResource(audio));
             return chatClient.prompt()
+                    .system(systemSpec -> systemSpec
+                            .text("You are an AI that listens to audio and generates meaningful English titles.")
+                    )
                     .user(promptUserSpec -> promptUserSpec
-                            .text(message)
+                            .text("create 5 title from content of the video")
                             .media(audioMedia)
                     )
                     .call()
-                    .entity(TranscriptionResponse.class);
+                    .entity(new ParameterizedTypeReference<>() {
+                    });
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
@@ -114,5 +112,34 @@ public class ChatService {
         }
 
         return tempOutput;
+    }
+
+    public DescriptionResponse generateDescription(MultipartFile video) {
+        File audio = null;
+
+        try {
+            audio = extractAudio(video);
+            Media audioMedia = new Media(MimeType.valueOf("audio/mp3"), new FileSystemResource(audio));
+            return chatClient.prompt()
+                    .system(systemSpec -> systemSpec
+                            .text("You are an AI that listens to audio and generates meaningful English description.")
+                    )
+                    .user(promptUserSpec -> promptUserSpec
+                            .text("create description from content of the video")
+                            .media(audioMedia)
+                    )
+                    .call()
+                    .entity(new ParameterizedTypeReference<>() {
+                    });
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            if(audio != null && audio.exists()){
+                boolean deleted = audio.delete();
+                if(!deleted){
+                    log.info("Warning: could not delete temp file: " + audio.getAbsolutePath());
+                }
+            }
+        }
     }
 }

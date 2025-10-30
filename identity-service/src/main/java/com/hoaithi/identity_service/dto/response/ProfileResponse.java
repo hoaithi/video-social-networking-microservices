@@ -19,4 +19,5 @@ public class ProfileResponse {
     String city;
     String avatarUrl;
     String bannerUrl;
+    boolean hasPassword;
 }

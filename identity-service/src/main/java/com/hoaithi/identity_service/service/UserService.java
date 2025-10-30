@@ -3,6 +3,7 @@ package com.hoaithi.identity_service.service;
 import com.hoaithi.event.dto.CreationUserEvent;
 import com.hoaithi.identity_service.constant.PredefinedRole;
 import com.hoaithi.identity_service.dto.request.ProfileRequest;
+import com.hoaithi.identity_service.dto.request.SavePasswordRequest;
 import com.hoaithi.identity_service.dto.request.UserCreationRequest;
 import com.hoaithi.identity_service.dto.request.UserUpdateRequest;
 import com.hoaithi.identity_service.dto.response.UserResponse;
@@ -14,6 +15,7 @@ import com.hoaithi.identity_service.mapper.UserMapper;
 import com.hoaithi.identity_service.repository.RoleRepository;
 import com.hoaithi.identity_service.repository.UserRepository;
 import com.hoaithi.identity_service.repository.httpclient.ProfileClient;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -45,9 +47,11 @@ public class UserService {
     @Transactional
     public UserResponse createUser(UserCreationRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) throw new AppException(ErrorCode.USER_EXISTED);
+        if (userRepository.existsByEmail(request.getEmail())) throw new AppException(ErrorCode.EMAIL_EXISTED);
 
         User user = userMapper.toUser(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+
 
         HashSet<Role> roles = new HashSet<>();
         roleRepository.findById(PredefinedRole.USER_ROLE).ifPresent(roles::add);
@@ -61,11 +65,12 @@ public class UserService {
                 .dob(request.getDob())
                 .userId(user.getId())
                 .email(request.getEmail())
+                .hasPassword(true)
                 .build();
 
         Object profile = profileClient.createProfile(profileRequest);
 
-        // publish event to     kafka
+        // publish event to kafka
         kafkaTemplate.send("user-topic", CreationUserEvent.builder()
                 .email(request.getEmail())
                 .build());
@@ -88,9 +93,6 @@ public class UserService {
         userMapper.updateUser(user, request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        var roles = roleRepository.findAllById(request.getRoles());
-        user.setRoles(new HashSet<>(roles));
-
         return userMapper.toUserResponse(userRepository.save(user));
     }
 
@@ -110,4 +112,5 @@ public class UserService {
         return userMapper.toUserResponse(
                 userRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED)));
     }
+
 }

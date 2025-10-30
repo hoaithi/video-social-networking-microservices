@@ -1,6 +1,8 @@
 package com.hoaithi.post_service.repository;
 
 import com.hoaithi.post_service.entity.Post;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
@@ -14,5 +16,5 @@ public interface PostRepository extends MongoRepository<Post, String> {
      * @param profileId the profile ID
      * @return a list of posts associated with the profile ID
      */
-    List<Post> findByProfileId(String profileId);
+    Page<Post> findByProfileId(String profileId, Pageable pageable);
 }

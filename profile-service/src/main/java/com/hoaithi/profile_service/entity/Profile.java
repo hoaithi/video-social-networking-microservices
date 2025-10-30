@@ -5,6 +5,8 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Data
@@ -16,6 +18,9 @@ public class Profile {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    boolean hasPassword;
 
     @Column
     String userId;
@@ -33,6 +38,19 @@ public class Profile {
     String bannerUrl;
 
     @Column
+    String email;
+
+    @Column(length = 1000)
+    String description;
+
+    @Column
     @Builder.Default
     LocalDate createdAt = LocalDate.now();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Subscription> subscriptions = new ArrayList<>();
+
+    @OneToMany(mappedBy = "channel", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Subscription> subscribers = new ArrayList<>();
+
 }
