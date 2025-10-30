@@ -42,9 +42,13 @@ public class Video {
     @Builder.Default
     private Long viewCount = 0L;
 
-    @Column(name = "heart_count")
+    @Column(name = "like_count")
     @Builder.Default
-    private Long heartCount = 0L;
+    private Long likeCount = 0L;
+
+    @Column(name = "dislike_count")
+    @Builder.Default
+    private Long dislikeCount = 0L;;
 
     @Column(name = "comment_count")
     @Builder.Default
@@ -63,6 +67,6 @@ public class Video {
     private List<VideoHistory> videoHistories = new ArrayList<>();
 
     @OneToMany(mappedBy = "video")
-    private List<VideoHeart> videoHearts = new ArrayList<>();
+    private List<VideoReaction> videoReactions = new ArrayList<>();
 
 }

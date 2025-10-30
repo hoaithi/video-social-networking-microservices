@@ -25,4 +25,11 @@ spring:
 
 jwt:
   signerKey: "1TjXchw5FloESb63Kc+DFhTARvpWL4jUGCwfGWxuG5SIf/1y/LgJxHnMqaF6A/ij"
+  expiration: 604800000 #ms
+  refresh-expiration: 2592000000 #ms
+
+google:
+  client-id: "32893351040-e670bshbm89vqp6pnasv97pj7t294khn.apps.googleusercontent.com"
+  client-secret: "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"
+  redirect-uri: "http://localhost:3000/authenticate"
 

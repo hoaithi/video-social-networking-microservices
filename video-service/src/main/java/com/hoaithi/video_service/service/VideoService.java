@@ -2,21 +2,16 @@ package com.hoaithi.video_service.service;
 
 import com.hoaithi.video_service.dto.request.VideoCreationRequest;
 import com.hoaithi.video_service.dto.request.VideoUpdationRequest;
-import com.hoaithi.video_service.dto.response.PagedResponse;
-import com.hoaithi.video_service.dto.response.VideoResponse;
-import com.hoaithi.video_service.entity.Playlist;
-import com.hoaithi.video_service.entity.Video;
-import com.hoaithi.video_service.entity.VideoHistory;
-import com.hoaithi.video_service.entity.VideoPlaylist;
+import com.hoaithi.video_service.dto.response.*;
+import com.hoaithi.video_service.entity.*;
+import com.hoaithi.video_service.enums.ReactionType;
 import com.hoaithi.video_service.exception.AppException;
 import com.hoaithi.video_service.exception.ErrorCode;
 import com.hoaithi.video_service.mapper.VideoMapper;
-import com.hoaithi.video_service.repository.HistoryRepository;
-import com.hoaithi.video_service.repository.PlaylistRepository;
-import com.hoaithi.video_service.repository.VideoHeartRepository;
+import com.hoaithi.video_service.repository.*;
 import com.hoaithi.video_service.repository.httpclient.CommentClient;
 import com.hoaithi.video_service.repository.httpclient.FileClient;
-import com.hoaithi.video_service.repository.VideoRepository;
+import com.hoaithi.video_service.repository.httpclient.ProfileClient;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -27,12 +22,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -44,8 +42,9 @@ public class VideoService {
     FileClient fileClient;
     CommentClient commentClient;
     HistoryRepository historyRepository;
-    VideoHeartRepository videoHeartRepository;
+    VideoReactionRepository videoReactionRepository;
     PlaylistRepository playlistRepository;
+    ProfileClient profileClient;
 
     public PagedResponse<VideoResponse> getVideos(int page, int size){
         Pageable pageable = PageRequest.of(page, size, Sort.by("publishedAt").descending());
@@ -54,6 +53,9 @@ public class VideoService {
         Page<VideoResponse> responses = videos.map(video -> {
             VideoResponse videoResponse = videoMapper.toVideoResponse(video);
             videoResponse.setPremium(video.isPremium());
+            ProfileResponse profileResponse = profileClient.getProfileById(videoResponse.getProfileId()).getResult();
+            videoResponse.setProfileImage(profileResponse.getAvatarUrl());
+            videoResponse.setProfileName(profileResponse.getFullName());
             return videoResponse;
         });
         return PagedResponse.<VideoResponse>builder()
@@ -71,6 +73,9 @@ public class VideoService {
         Page<VideoResponse> responses = videos.map(video -> {
             VideoResponse videoResponse = videoMapper.toVideoResponse(video);
             videoResponse.setPremium(video.isPremium());
+            ProfileResponse profileResponse = profileClient.getProfileById(videoResponse.getProfileId()).getResult();
+            videoResponse.setProfileImage(profileResponse.getAvatarUrl());
+            videoResponse.setProfileName(profileResponse.getFullName());
             return videoResponse;
         });
         return PagedResponse.<VideoResponse>builder()
@@ -99,12 +104,17 @@ public class VideoService {
         Video video = videoRepository.findById(videoId).orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
         video.setViewCount(video.getViewCount()+1);
         video.setCommentCount(commentClient.countComment(videoId).getResult().getCommentCount());
-        historyRepository.save(VideoHistory.builder()
-                .video(video)
-                .profileId(currentProfileId)
-                .build());
+        if(!historyRepository.existsByProfileIdAndVideoId(currentProfileId, videoId)){
+            historyRepository.save(VideoHistory.builder()
+                    .video(video)
+                    .profileId(currentProfileId)
+                    .build());
+        }
+
         VideoResponse response = videoMapper.toVideoResponse(videoRepository.save(video));
-        response.setHearted(videoHeartRepository.existsByProfileIdAndVideoId(currentProfileId, videoId));
+        ProfileResponse profileResponse = profileClient.getProfileById(response.getProfileId()).getResult();
+        response.setProfileName(profileResponse.getFullName());
+        response.setProfileImage(profileResponse.getAvatarUrl());
         return response;
     }
 
@@ -173,6 +183,119 @@ public class VideoService {
         return SecurityContextHolder.getContext().getAuthentication().getName();
     }
 
+
+    public OwnerIdResponse getOwnerId(String videoId) {
+        Video video = videoRepository.findById(videoId).orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
+        return OwnerIdResponse.builder()
+                .ownerId(video.getProfileId())
+                .build();
+    }
+    public VideoResponse dislikeVideo(String videoId) {
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
+
+        String profileId = getCurrentUserId();
+        // Check if user already reacted to this video
+        Optional<VideoReaction> existingReaction = videoReactionRepository.findByProfileIdAndVideoId(profileId,videoId);
+
+        if (existingReaction.isPresent()) {
+            VideoReaction reaction = existingReaction.get();
+
+            // If already disliked, do nothing
+            if (reaction.getReactionType() == ReactionType.DISLIKE) {
+                videoReactionRepository.delete(reaction);
+                video.setDislikeCount(video.getDislikeCount() - 1);
+            }else{
+                // If liked, change to dislike and update counts
+                reaction.setReactionType(ReactionType.DISLIKE);
+                reaction.setCreatedAt(LocalDateTime.now());
+                videoReactionRepository.save(reaction);
+
+                video.setLikeCount(video.getLikeCount() - 1);
+                video.setDislikeCount(video.getDislikeCount() + 1);
+            }
+
+
+        } else {
+            // Create new dislike reaction
+            VideoReaction reaction = VideoReaction.builder()
+                    .profileId(profileId)
+                    .video(video)
+                    .reactionType(ReactionType.DISLIKE)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            videoReactionRepository.save(reaction);
+
+            video.setDislikeCount(video.getDislikeCount() + 1);
+        }
+
+        VideoResponse response = videoMapper.toVideoResponse(videoRepository.save(video));
+        ProfileResponse profileResponse = profileClient.getProfileById(response.getProfileId()).getResult();
+        response.setProfileName(profileResponse.getFullName());
+        response.setProfileImage(profileResponse.getAvatarUrl());
+        return response;
+    }
+    @Transactional
+    public VideoResponse likeVideo(String videoId) {
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
+
+        String profileId = getCurrentUserId();
+        // Check if user already reacted to this video
+        Optional<VideoReaction> existingReaction = videoReactionRepository.findByProfileIdAndVideoId(profileId, videoId);
+
+        if (existingReaction.isPresent()) {
+            VideoReaction reaction = existingReaction.get();
+
+            // If already liked, do nothing
+            if (reaction.getReactionType() == ReactionType.LIKE) {
+                videoReactionRepository.delete(reaction);
+                video.setLikeCount(video.getLikeCount() - 1);
+            }else{
+                // If disliked, change to like and update counts
+                reaction.setReactionType(ReactionType.LIKE);
+                reaction.setCreatedAt(LocalDateTime.now());
+                videoReactionRepository.save(reaction);
+
+                video.setLikeCount(video.getLikeCount() + 1);
+                video.setDislikeCount(video.getDislikeCount() - 1);
+            }
+
+        } else {
+            // Create new like reaction
+            VideoReaction reaction = VideoReaction.builder()
+                    .profileId(profileId)
+                    .video(video)
+                    .reactionType(ReactionType.LIKE)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            videoReactionRepository.save(reaction);
+
+            video.setLikeCount(video.getLikeCount() + 1);
+        }
+
+        VideoResponse response = videoMapper.toVideoResponse(videoRepository.save(video));
+        ProfileResponse profileResponse = profileClient.getProfileById(response.getProfileId()).getResult();
+        response.setProfileName(profileResponse.getFullName());
+        response.setProfileImage(profileResponse.getAvatarUrl());
+        return response;
+    }
+    public VideoUserReaction getUserReaction(String videoId) {
+        Optional<VideoReaction> videoReaction = videoReactionRepository.findByProfileIdAndVideoId(getCurrentUserId(), videoId);
+        if (videoReaction.isPresent()) {
+            return VideoUserReaction.builder()
+                    .hasReacted(true)
+                    .reactionType(videoReaction.get().getReactionType())
+                    .createdAt(videoReaction.get().getCreatedAt())
+                    .build();
+        }else{
+            return VideoUserReaction.builder()
+                    .hasReacted(false)
+                    .build();
+        }
+    }
 
 
 }

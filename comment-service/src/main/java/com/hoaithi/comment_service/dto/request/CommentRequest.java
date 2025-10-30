@@ -12,6 +12,7 @@ import lombok.experimental.FieldDefaults;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class CommentRequest {
     String content;
+    String commentType;
     String itemId;
     String parentCommentId;
 }

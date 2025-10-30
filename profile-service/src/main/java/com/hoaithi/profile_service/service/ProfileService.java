@@ -52,7 +52,8 @@ public class ProfileService {
         return profileMapper.toProfileResponse(profile);
     }
 
-    public UpdateProfileResponse updateProfile(String id, UpdateProfileRequest profileRequest, MultipartFile avatar, MultipartFile banner) {
+    public ProfileResponse updateProfile(String id, UpdateProfileRequest profileRequest, MultipartFile avatar, MultipartFile banner) {
+        log.info("id:" + id);
         Profile profile = profileRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_EXISTED));
         if(avatar != null){
@@ -71,10 +72,13 @@ public class ProfileService {
             if (profileRequest.getCity() != null) {
                 profile.setCity(profileRequest.getCity());
             }
+            if (profileRequest.getDescription() != null){
+                profile.setDescription(profileRequest.getDescription());
+            }
         }
 
         profile = profileRepository.save(profile);
-        return profileMapper.toUpdateProfileResponse(profile);
+        return profileMapper.toProfileResponse(profile);
     }
 
     public ProfileResponse getMyFile() {
@@ -87,5 +91,12 @@ public class ProfileService {
     public ProfileResponse getProfileByUserId(String userId) {
         Profile profile = profileRepository.findByUserId(userId);
         return profileMapper.toProfileResponse(profile);
+    }
+
+    public void updateHasPassword(ProfileRequest request){
+        Profile profile = profileRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_EXISTED));
+        profile.setHasPassword(true);
+        profileRepository.save(profile);
     }
 }

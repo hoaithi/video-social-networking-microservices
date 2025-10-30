@@ -16,5 +16,7 @@ public class ProfileRequest {
     String city;
     String userId;
     String email;
+    String avatarUrl;
+    boolean hasPassword;
 }
 

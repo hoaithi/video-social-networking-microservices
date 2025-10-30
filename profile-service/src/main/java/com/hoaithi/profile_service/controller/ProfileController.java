@@ -18,6 +18,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 @Slf4j
@@ -56,14 +59,12 @@ public class ProfileController {
                 .build();
     }
 
-
-
     @GetMapping("/my-profile")
     @Operation(
             summary = "Get my profile",
             description = "Retrieve the profile information of the currently logged-in user"
     )
-    public ApiResponse<ProfileResponse> getMyProfile(){
+    public ApiResponse<ProfileResponse> getMyProfile() {
         ProfileResponse response = profileService.getMyFile();
         return ApiResponse.<ProfileResponse>builder()
                 .message("My profile retrieved successfully")
@@ -76,20 +77,39 @@ public class ProfileController {
             summary = "Update user profile",
             description = "Update user profile information"
     )
-    public ApiResponse<UpdateProfileResponse> updateProfile(
+    public ApiResponse<ProfileResponse> updateProfile(
             @Parameter(description = "The unique ID of the user profile to update")
             @PathVariable String id,
 
-            @Parameter(description = "Profile details in JSON format")
-            @RequestPart(value = "profile", required = false) UpdateProfileRequest request,
+            @RequestPart(value = "fullName", required = false) String fullName,
+            @RequestPart(value = "city", required = false) String city,
+            @RequestPart(value = "dob", required = false) String dob,
+            @RequestPart(value = "description", required = false) String description,
 
             @Parameter(description = "New avatar image file")
             @RequestPart(value = "avatar", required = false) MultipartFile avatar,
 
             @Parameter(description = "New banner image file")
             @RequestPart(value = "banner", required = false) MultipartFile banner) {
-        UpdateProfileResponse updatedProfile = profileService.updateProfile(id, request, avatar, banner);
-        return ApiResponse.<UpdateProfileResponse>builder()
+
+
+        UpdateProfileRequest request = new UpdateProfileRequest();
+        request.setFullName(fullName);
+        request.setCity(city);
+        request.setDescription(description);
+
+        // ✅ Xử lý chuyển đổi dob (String → LocalDate)
+        if (dob != null && !dob.isEmpty()) {
+            try {
+                // giả định frontend gửi định dạng yyyy-MM-dd
+                LocalDate dateOfBirth = LocalDate.parse(dob, DateTimeFormatter.ISO_LOCAL_DATE);
+                request.setDob(dateOfBirth);
+            } catch (DateTimeParseException e) {
+                throw new IllegalArgumentException("Invalid date format for dob. Expected format: yyyy-MM-dd");
+            }
+        }
+        ProfileResponse updatedProfile = profileService.updateProfile(id, request, avatar, banner);
+        return ApiResponse.<ProfileResponse>builder()
                 .result(updatedProfile)
                 .message("Profile updated successfully")
                 .build();

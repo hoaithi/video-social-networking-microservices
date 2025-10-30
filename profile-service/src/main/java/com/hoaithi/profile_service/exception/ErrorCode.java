@@ -16,6 +16,8 @@ public enum ErrorCode {
     UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
     INVALID_DOB(1008, "Your age must be at least {min}", HttpStatus.BAD_REQUEST),
     PROFILE_NOT_EXISTED(1011, "Profile not existed", HttpStatus.NOT_FOUND),
+    USER_CHANNEL_SAME(1012,"User and Channel are the same", HttpStatus.BAD_REQUEST),
+    SUBSCRIPTION_NOT_EXISTED(1011, "Subscription not existed", HttpStatus.NOT_FOUND),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

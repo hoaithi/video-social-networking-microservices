@@ -13,4 +13,5 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Builder
 public class CreationPostRequest {
     String content;
+    String title;
 }

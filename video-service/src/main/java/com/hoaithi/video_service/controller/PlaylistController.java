@@ -5,7 +5,6 @@ import com.hoaithi.video_service.dto.response.ApiResponse;
 import com.hoaithi.video_service.dto.response.PlaylistResponse;
 import com.hoaithi.video_service.dto.response.VideoResponse;
 import com.hoaithi.video_service.service.HistoryService;
-import com.hoaithi.video_service.service.HeartService;
 import com.hoaithi.video_service.service.PlaylistService;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -19,7 +18,6 @@ import java.util.List;
 @FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 public class PlaylistController {
     HistoryService historyService;
-    HeartService heartService;
     PlaylistService playlistService;
 
 
@@ -41,19 +39,6 @@ public class PlaylistController {
     public ApiResponse<PlaylistResponse> createPlaylist(@RequestBody PlaylistCreationRequest request){
         return ApiResponse.<PlaylistResponse>builder()
                 .result(playlistService.createPlaylist(request))
-                .build();
-    }
-
-    @GetMapping("/history")
-    public ApiResponse<List<VideoResponse>> getHistories(){
-        return ApiResponse.<List<VideoResponse>>builder()
-                .result(historyService.getVideoHistories())
-                .build();
-    }
-    @GetMapping("/heart")
-    public ApiResponse<?> getHearts(){
-        return ApiResponse.<List<VideoResponse>>builder()
-                .result(heartService.getVideoHearts())
                 .build();
     }
 }

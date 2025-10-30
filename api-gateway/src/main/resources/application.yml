@@ -24,6 +24,15 @@ spring:
                 - Path=${app.api-prefix}/profile/**
               filters:
                 - StripPrefix=2
+
+            # Route 2: Profile Service
+            - id: profile-service
+              uri: http://localhost:8081
+              predicates:
+                - Path=${app.api-prefix}/subscription/**
+              filters:
+                - StripPrefix=2
+
             # Route 3: Notification Service
             - id: notification-service
               uri: http://localhost:8082

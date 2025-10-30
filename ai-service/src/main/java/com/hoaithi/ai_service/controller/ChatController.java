@@ -1,11 +1,14 @@
 package com.hoaithi.ai_service.controller;
 
-import com.hoaithi.ai_service.dto.ChatRequest;
-import com.hoaithi.ai_service.dto.TranscriptionRequest;
-import com.hoaithi.ai_service.dto.TranscriptionResponse;
+import com.hoaithi.ai_service.dto.request.ChatRequest;
+import com.hoaithi.ai_service.dto.response.ApiResponse;
+import com.hoaithi.ai_service.dto.response.DescriptionResponse;
+import com.hoaithi.ai_service.dto.response.TitleResponse;
 import com.hoaithi.ai_service.service.ChatService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 public class ChatController {
@@ -17,10 +20,25 @@ public class ChatController {
     public String chat(@RequestBody ChatRequest request) {
         return chatService.chat(request);
     }
-    @PostMapping("/transcribe")
-    public TranscriptionResponse transcribe(
-            @RequestPart("video")MultipartFile video,
-            @RequestPart("message") String message) throws Exception {
-        return chatService.transcribeToString(video, message);
+
+
+    @PostMapping("/generate-title")
+    public ApiResponse<List<TitleResponse>> generateTitle(
+            @RequestPart("videoFile") MultipartFile video) throws Exception {
+
+        return ApiResponse.<List<TitleResponse>>builder()
+                .message("")
+                .result(chatService.generateTilte(video))
+                .build();
+    }
+
+    @PostMapping("/generate-description")
+    public ApiResponse<DescriptionResponse> generateDescription(
+            @RequestPart("videoFile") MultipartFile video) throws Exception {
+
+        return ApiResponse.<DescriptionResponse>builder()
+                .message("")
+                .result(chatService.generateDescription(video))
+                .build();
     }
 }

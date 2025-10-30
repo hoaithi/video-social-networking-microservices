@@ -1,16 +1,21 @@
 package com.hoaithi.identity_service.service;
 
 
+import com.hoaithi.event.dto.CreationUserEvent;
 import com.hoaithi.event.dto.ForgetPasswordEvent;
+import com.hoaithi.identity_service.constant.PredefinedRole;
 import com.hoaithi.identity_service.dto.request.*;
-import com.hoaithi.identity_service.dto.response.AuthenticationResponse;
-import com.hoaithi.identity_service.dto.response.IntrospectResponse;
+import com.hoaithi.identity_service.dto.response.*;
 import com.hoaithi.identity_service.entity.InvalidatedToken;
+import com.hoaithi.identity_service.entity.Role;
 import com.hoaithi.identity_service.entity.User;
 import com.hoaithi.identity_service.exception.AppException;
 import com.hoaithi.identity_service.exception.ErrorCode;
 import com.hoaithi.identity_service.repository.InvalidatedTokenRepository;
+import com.hoaithi.identity_service.repository.RoleRepository;
 import com.hoaithi.identity_service.repository.UserRepository;
+import com.hoaithi.identity_service.repository.httpclient.GoogleClient;
+import com.hoaithi.identity_service.repository.httpclient.GoogleUserInfoClient;
 import com.hoaithi.identity_service.repository.httpclient.ProfileClient;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
@@ -31,8 +36,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import java.text.ParseException;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -47,10 +50,34 @@ public class AuthenticationService {
     RedisTemplate<String, String> redisTemplate;
     PasswordEncoder passwordEncoder;
     ProfileClient profileClient;
+    GoogleClient googleClient;
+    GoogleUserInfoClient googleUserInfoClient;
+    RoleRepository roleRepository;
 
     @NonFinal
     @Value("${jwt.signerKey}")
     protected String signerKey;
+
+    @NonFinal
+    @Value("${google.client-id}")
+    String clientId;
+
+    @NonFinal
+    @Value("${google.client-secret}")
+    String clientSecret;
+
+    @NonFinal
+    @Value("${google.redirect-uri}")
+    String redirectUri;
+
+    @NonFinal
+    @Value("${jwt.refresh-expiration}")
+    Long refreshExpiration;
+
+    @NonFinal
+    @Value("${jwt.expiration}")
+    Long accessExpiration;
+
 
     public boolean resetPassword(ResetPasswordRequest request){
         String email = request.getEmail();
@@ -96,21 +123,73 @@ public class AuthenticationService {
         return IntrospectResponse.builder().valid(isValid).build();
     }
 
+    public AuthenticationResponse loginGoogle(GoogleLoginRequest request){
+        GoogleExchangeTokenResponse response =  googleClient.getTokenFromGoogle(GoogleExchangeTokenRequest.builder()
+                        .clientId(clientId)
+                        .clientSecret(clientSecret)
+                        .code(request.getCode())
+                        .grantType("authorization_code")
+                        .redirectUri(redirectUri)
+                .build());
+        GoogleUserInfoResponse userInfo =
+                googleUserInfoClient.getUserInfo("json", response.getAccessToken());
+        if(!userRepository.existsByEmail(userInfo.getEmail())){
+           User user = createUserFromGoogle(userInfo);
+        }
+        User user = userRepository.findByEmail(userInfo.getEmail());
+
+        String accessToken = generateAccessToken(user, accessExpiration);
+        String refreshToken = generateRefreshToken(user, refreshExpiration);
+
+
+        return AuthenticationResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+    }
+
+    private User createUserFromGoogle(GoogleUserInfoResponse userInfo){
+        HashSet<Role> roles = new HashSet<>();
+        roleRepository.findById(PredefinedRole.USER_ROLE).ifPresent(roles::add);
+        User user = userRepository.save(User.builder()
+                .roles(roles)
+                .email(userInfo.getEmail())
+                .build());
+
+        ProfileRequest profileRequest = ProfileRequest.builder()
+                .fullName(userInfo.getName())
+                .userId(user.getId())
+                .email(userInfo.getEmail())
+                .avatarUrl(userInfo.getPicture())
+                .build();
+
+        Object profile = profileClient.createProfile(profileRequest);
+
+        // publish event to kafka
+        kafkaTemplate.send("user-topic", CreationUserEvent.builder()
+                .email(userInfo.getEmail())
+                .build());
+        return user;
+    }
+
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
         var user = userRepository
-                .findByUsername(request.getUsername())
+                .findByUsernameOrEmail(request.getUsernameOrEmail(), request.getUsernameOrEmail())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
 
         if (!authenticated) throw new AppException(ErrorCode.UNAUTHENTICATED);
 
-        var token = generateToken(user);
+        String accessToken = generateAccessToken(user, accessExpiration);
+        String refreshToken = generateRefreshToken(user, refreshExpiration);
+
+
 
         return AuthenticationResponse.builder()
-                .token(token.token)
-                .expiryTime(token.expiryDate)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
                 .build();
     }
 
@@ -142,27 +221,31 @@ public class AuthenticationService {
         var user =
                 userRepository.findByUsername(username).orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
-        var token = generateToken(user);
-
+//        var token = generateToken(user);
+        String accessToken = generateAccessToken(user, accessExpiration);
         return AuthenticationResponse.builder()
-                .token(token.token)
-                .expiryTime(token.expiryDate)
+                .accessToken(accessToken)
                 .build();
     }
 
-    private TokenInfo generateToken(User user) {
+    private String generateAccessToken(User user, Long accessExpiration){
+        return generateToken(user, accessExpiration);
+    }
+    private String generateRefreshToken(User user, Long refreshExpiration){
+        return generateToken(user, refreshExpiration);
+    }
+
+    private String generateToken(User user, Long expirationMs) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
-        Date issueTime = new Date();
-        Date expiryTime = new Date(Instant.ofEpochMilli(issueTime.getTime())
-                .plus(1, ChronoUnit.HOURS)
-                .toEpochMilli());
         String profileId = profileClient.getProfileByUserId(user.getId()).getResult().getId();
+
+        Date expiryTime = new Date(System.currentTimeMillis() + expirationMs);
 
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
                 .subject(profileId)
                 .issuer("vidsonet.microservice.com")
-                .issueTime(issueTime)
+                .issueTime(new Date())
                 .expirationTime(expiryTime)
                 .jwtID(UUID.randomUUID().toString())
                 .claim("scope", buildScope(user))
@@ -175,7 +258,7 @@ public class AuthenticationService {
 
         try {
             jwsObject.sign(new MACSigner(signerKey.getBytes()));
-            return new TokenInfo(jwsObject.serialize(), expiryTime);
+            return jwsObject.serialize();
         } catch (JOSEException e) {
             log.error("Cannot create token", e);
             throw new AppException(ErrorCode.UNAUTHENTICATED);
@@ -211,6 +294,15 @@ public class AuthenticationService {
 
         return stringJoiner.toString();
     }
+
+    public void createPassword(ResetPasswordRequest request) {
+        User user = userRepository.findByEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        profileClient.updateHasPassword(ProfileRequest.builder()
+                .email(request.getEmail()).build());
+    }
+
 
     private record TokenInfo(String token, Date expiryDate) {}
 }

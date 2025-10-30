@@ -39,6 +39,8 @@ public class InternalProfileController {
                 .message("create profile successful")
                 .build();
     }
+
+
     @GetMapping("/internal/profile/{userId}")
     @Operation(
             summary = "Get profile by userId",
@@ -51,6 +53,13 @@ public class InternalProfileController {
         return ApiResponse.<ProfileResponse>builder()
                 .message("Profile retrieved successfully")
                 .result(profile)
+                .build();
+    }
+    @PostMapping("/internal/profile/update-has-password")
+    public ApiResponse<Void> updateHasPassword(@RequestBody ProfileRequest request) {
+        profileService.updateHasPassword(request);
+        return ApiResponse.<Void>builder()
+                .message("update has password profile successful")
                 .build();
     }
 

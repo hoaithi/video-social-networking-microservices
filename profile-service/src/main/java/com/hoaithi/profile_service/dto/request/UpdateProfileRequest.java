@@ -11,7 +11,10 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UpdateProfileRequest {
+    String id;
     String fullName;
     LocalDate dob;
     String city;
+    String description;
+    boolean hasPassword;
 }

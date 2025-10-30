@@ -12,7 +12,9 @@ import com.hoaithi.comment_service.exception.ErrorCode;
 import com.hoaithi.comment_service.mapper.CommentMapper;
 import com.hoaithi.comment_service.repository.CommentHeartRepository;
 import com.hoaithi.comment_service.repository.CommentRepository;
+import com.hoaithi.comment_service.repository.httpclient.PostClient;
 import com.hoaithi.comment_service.repository.httpclient.ProfileClient;
+import com.hoaithi.comment_service.repository.httpclient.VideoClient;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -31,7 +33,8 @@ public class CommentService {
     CommentHeartRepository commentHeartRepository;
     CommentMapper commentMapper;
     ProfileClient profileClient;
-
+    VideoClient videoClient;
+    PostClient postClient;
     public CommentResponse createComment(CommentRequest request){
         ProfileResponse response = profileClient.getMyProfile().getResult();
 
@@ -79,12 +82,30 @@ public class CommentService {
 
     public void deleteComment(String commentId){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserId = authentication.getName();
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_EXISTED));
-        if(!comment.getOwner().getProfileId().equals(authentication.getName())){
+        if(canDeleteComment(comment, currentUserId)){
+            commentRepository.deleteById(commentId);
+        }else {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
-        commentRepository.deleteById(commentId);
+    }
+    private boolean canDeleteComment(Comment comment, String currentUserId){
+        if(currentUserId.equals(comment.getOwner().getProfileId())) return true;
+
+        return switch (comment.getCommentType()) {
+            case POST -> {
+                String postOwner = postClient.getOwnerById(comment.getItemId()).getOwnerId();
+                yield postOwner.equals(currentUserId);
+            }
+            case VIDEO -> {
+                String videoOwnerId = videoClient.getOwnerById(comment.getItemId()).getOwnerId();
+                yield videoOwnerId.equals(currentUserId);
+            }
+            default -> false;
+        };
+
     }
 
     public CommentResponse heartComment(String commentId){
@@ -111,5 +132,6 @@ public class CommentService {
                 .commentCount(commentRepository.countByItemId(itemId))
                 .build();
     }
+
 
 }
