@@ -29,10 +29,10 @@ public class Video {
 
     private boolean isPremium;
 
-    @Column(name = "thumbnail_url")
+    @Column(name = "thumbnail_url", length = 1000)
     private String thumbnailUrl;
 
-    @Column(name = "video_url", nullable = false)
+    @Column(name = "video_url", nullable = false, length = 2000)
     private String videoUrl;
 
     @Column(name = "published_at")
