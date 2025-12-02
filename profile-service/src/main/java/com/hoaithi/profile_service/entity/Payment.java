@@ -1,5 +1,6 @@
-package com.hoaithidev.vidsonet_backend.model;
-import com.hoaithidev.vidsonet_backend.enums.PaymentStatus;
+package com.hoaithi.profile_service.entity;
+
+import com.hoaithi.profile_service.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.*;
 

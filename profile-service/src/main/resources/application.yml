@@ -22,3 +22,11 @@ springdoc:
       paths-to-match: /profile/**
     - group: internal
       paths-to-match: /internal/profile/**
+paypal:
+  client-id: Ab2FU5u97cgWPv2X7decFTugtAHIpMcD7RCOwaJQ033uD4H_bI7qTmmtcp2wxXIuDhhjNxF8r43Od2fg
+  client-secret: ELBp27evxbc7eI6GWs4RLB_KAyrswZZfIpvQmM9TdBG-7kcYo75t6Ht7ynYYsSmjLNV4rtNSWQBcx2bz
+  mode: sandbox # sandbox hoặc live
+  success-url: ${app.frontend-url}/membership/success
+  cancel-url: ${app.frontend-url}/membership/cancel
+app:
+  frontend-url: http://localhost:3000

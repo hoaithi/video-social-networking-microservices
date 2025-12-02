@@ -1,4 +1,4 @@
-package com.hoaithidev.vidsonet_backend.config;
+package com.hoaithi.profile_service.configuration;
 
 import com.paypal.core.PayPalEnvironment;
 import com.paypal.core.PayPalHttpClient;

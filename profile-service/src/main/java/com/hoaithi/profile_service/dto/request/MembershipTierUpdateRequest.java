@@ -1,4 +1,4 @@
-package com.hoaithidev.vidsonet_backend.dto.membership;
+package com.hoaithi.profile_service.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.DecimalMin;

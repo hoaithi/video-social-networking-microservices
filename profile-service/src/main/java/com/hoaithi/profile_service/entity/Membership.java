@@ -1,4 +1,4 @@
-package com.hoaithidev.vidsonet_backend.model;
+package com.hoaithi.profile_service.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -32,8 +32,8 @@ public class Membership {
     private LocalDateTime updatedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "profile_id", nullable = false)
+    private Profile user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "membership_tier_id", nullable = false)

@@ -1,6 +1,6 @@
-package com.hoaithidev.vidsonet_backend.repository;
+package com.hoaithi.profile_service.repository;
 
-import com.hoaithidev.vidsonet_backend.model.Payment;
+import com.hoaithi.profile_service.entity.Payment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
