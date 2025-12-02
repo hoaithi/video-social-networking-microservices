@@ -1,4 +1,4 @@
-package com.hoaithi.profile_service.configuration;
+package com.hoaithi.video_service.configuration;
 
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
