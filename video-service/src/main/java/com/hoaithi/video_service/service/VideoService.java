@@ -443,10 +443,13 @@ public class VideoService {
         Video video = videoRepository.findById(videoId)
                 .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
         boolean hasMembership = profileClient.checkMembership(video.getProfileId()).getResult();
-        if(video.isPremium() && !hasMembership){
-            log.warn("Access denied to premium video: {} for profile: {}", videoId, currentProfileId);
-            throw new AppException(ErrorCode.PREMIUM_VIDEO_ACCESS_DENIED);
+        if(!currentProfileId.equals(video.getProfileId())){
+            if(video.isPremium() && !hasMembership){
+                log.warn("Access denied to premium video: {} for profile: {}", videoId, currentProfileId);
+                throw new AppException(ErrorCode.PREMIUM_VIDEO_ACCESS_DENIED);
+            }
         }
+
 
         log.info("Video found - Title: {}, Current views: {}", video.getTitle(), video.getViewCount());
 
