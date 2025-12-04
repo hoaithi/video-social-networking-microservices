@@ -1,10 +1,7 @@
 package com.hoaithi.video_service.controller;
 
 import com.hoaithi.video_service.dto.request.VideoCreationRequest;
-import com.hoaithi.video_service.dto.response.ApiResponse;
-import com.hoaithi.video_service.dto.response.PagedResponse;
-import com.hoaithi.video_service.dto.response.VideoResponse;
-import com.hoaithi.video_service.dto.response.VideoUserReaction;
+import com.hoaithi.video_service.dto.response.*;
 import com.hoaithi.video_service.service.VideoService;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -120,5 +117,52 @@ public class VideoController {
                 .build());
     }
 
+    @GetMapping("/my/dashboard/{profileId}")
+    public ApiResponse<DashboardResponse> getDashboardByProfileId(@PathVariable String profileId) {
+        log.info("=== Getting Dashboard Stats for Profile: {} ===", profileId);
+
+        DashboardResponse dashboardData = videoService.getDashboardStatsByProfile(profileId);
+
+        log.info("=== Dashboard Stats Retrieved Successfully ===");
+        return ApiResponse.<DashboardResponse>builder()
+                .result(dashboardData)
+                .message("Dashboard data retrieved successfully")
+                .build();
+    }
+
+    @GetMapping("/admin/dashboard")
+    public ApiResponse<DashboardResponse> getAdminDashboard() {
+        log.info("=== Admin: Getting Overall Dashboard Stats ===");
+
+        DashboardResponse dashboardData = videoService.getAdminDashboardStats();
+
+        log.info("=== Admin Dashboard Stats Retrieved Successfully ===");
+        return ApiResponse.<DashboardResponse>builder()
+                .result(dashboardData)
+                .message("Admin dashboard data retrieved successfully")
+                .build();
+    }
+
+    @GetMapping("/all")
+    public ApiResponse<PagedResponse<VideoResponse>> getAllVideos(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Boolean isPremium,
+            @RequestParam(defaultValue = "publishedAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection
+    ) {
+        log.info("=== Admin: Getting All Videos - Page: {}, Size: {}, Search: {}, Premium: {}, Sort: {} {} ===",
+                page, size, search, isPremium, sortBy, sortDirection);
+
+        PagedResponse<VideoResponse> videos = videoService.getAllVideosForAdmin(
+                page, size, search, isPremium, sortBy, sortDirection);
+
+        log.info("=== All Videos Retrieved Successfully ===");
+        return ApiResponse.<PagedResponse<VideoResponse>>builder()
+                .result(videos)
+                .message("All videos retrieved successfully")
+                .build();
+    }
 
 }

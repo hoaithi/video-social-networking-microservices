@@ -2,9 +2,7 @@ package com.hoaithi.profile_service.controller;
 
 import com.hoaithi.profile_service.dto.request.ProfileRequest;
 import com.hoaithi.profile_service.dto.request.UpdateProfileRequest;
-import com.hoaithi.profile_service.dto.response.ApiResponse;
-import com.hoaithi.profile_service.dto.response.ProfileResponse;
-import com.hoaithi.profile_service.dto.response.UpdateProfileResponse;
+import com.hoaithi.profile_service.dto.response.*;
 import com.hoaithi.profile_service.service.ProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -112,6 +110,40 @@ public class ProfileController {
         return ApiResponse.<ProfileResponse>builder()
                 .result(updatedProfile)
                 .message("Profile updated successfully")
+                .build();
+    }
+
+    @GetMapping("/count/total")
+    public ApiResponse<Long> getTotalUserCount() {
+        log.info("=== Getting Total User Count ===");
+
+        Long totalUsers = profileService.getTotalUserCount();
+
+        return ApiResponse.<Long>builder()
+                .result(totalUsers)
+                .message("Total user count retrieved successfully")
+                .build();
+    }
+
+    @GetMapping("/admin/all")
+    public ApiResponse<PagedResponse<ProfileDetailResponse>> getAllProfiles(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Boolean hasPassword,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection
+    ) {
+        log.info("=== Admin: Getting All Profiles - Page: {}, Size: {}, Search: {}, HasPassword: {}, Sort: {} {} ===",
+                page, size, search, hasPassword, sortBy, sortDirection);
+
+        PagedResponse<ProfileDetailResponse> profiles = profileService.getAllProfilesForAdmin(
+                page, size, search, hasPassword, sortBy, sortDirection);
+
+        log.info("=== All Profiles Retrieved Successfully ===");
+        return ApiResponse.<PagedResponse<ProfileDetailResponse>>builder()
+                .result(profiles)
+                .message("All profiles retrieved successfully")
                 .build();
     }
 

@@ -21,4 +21,10 @@ public interface ProfileClient {
     @GetMapping("/memberships/check")
     ApiResponse<Boolean>checkMembership(@RequestParam String channelId) ;
 
+
+    @GetMapping("/subscription/{channelId}/count")
+    ApiResponse<Long> getSubscriberCount(@PathVariable("channelId") String channelId);
+
+    @GetMapping("/count/total")
+    ApiResponse<Long> getTotalUserCount();
 }
