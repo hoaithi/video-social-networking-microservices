@@ -3,6 +3,8 @@ package com.hoaithi.profile_service.service;
 
 import com.hoaithi.profile_service.dto.request.ProfileRequest;
 import com.hoaithi.profile_service.dto.request.UpdateProfileRequest;
+import com.hoaithi.profile_service.dto.response.PagedResponse;
+import com.hoaithi.profile_service.dto.response.ProfileDetailResponse;
 import com.hoaithi.profile_service.dto.response.ProfileResponse;
 import com.hoaithi.profile_service.dto.response.UpdateProfileResponse;
 import com.hoaithi.profile_service.entity.Profile;
@@ -10,11 +12,16 @@ import com.hoaithi.profile_service.exception.AppException;
 import com.hoaithi.profile_service.exception.ErrorCode;
 import com.hoaithi.profile_service.mapper.ProfileMapper;
 import com.hoaithi.profile_service.repository.ProfileRepository;
+import com.hoaithi.profile_service.repository.SubscriptionRepository;
 import com.hoaithi.profile_service.repository.httpclient.FileClient;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -32,6 +39,8 @@ public class ProfileService {
     ProfileRepository profileRepository;
     ProfileMapper profileMapper;
     FileClient fileClient;
+
+    SubscriptionRepository subscriptionRepository;
 
     public ProfileResponse createProfile(ProfileRequest profileRequest) {
         Profile profile = profileMapper.toProfile(profileRequest);
@@ -98,5 +107,91 @@ public class ProfileService {
                 .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_EXISTED));
         profile.setHasPassword(true);
         profileRepository.save(profile);
+    }
+
+    public PagedResponse<ProfileDetailResponse> getAllProfilesForAdmin(
+            int page, int size, String search, Boolean hasPassword, String sortBy, String sortDirection) {
+
+        log.info("=== Getting All Profiles - Filters: search={}, hasPassword={}, sort={} {} ===",
+                search, hasPassword, sortBy, sortDirection);
+
+        // Build Sort
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("asc")
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+        Sort sort = Sort.by(direction, sortBy);
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        // Get profiles with filters
+        Page<Profile> profilePage;
+
+        if (search != null && !search.isEmpty() && hasPassword != null) {
+            // Filter by both search and hasPassword
+            profilePage = profileRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCaseAndHasPassword(
+                    search, search, hasPassword, pageable);
+            log.info("Applied filters: search + hasPassword");
+        } else if (search != null && !search.isEmpty()) {
+            // Filter by search only (fullName or email)
+            profilePage = profileRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
+                    search, search, pageable);
+            log.info("Applied filter: search only");
+        } else if (hasPassword != null) {
+            // Filter by hasPassword only
+            profilePage = profileRepository.findByHasPassword(hasPassword, pageable);
+            log.info("Applied filter: hasPassword only");
+        } else {
+            // No filters
+            profilePage = profileRepository.findAll(pageable);
+            log.info("No filters applied");
+        }
+
+        log.info("Found {} profiles on page {} of {}",
+                profilePage.getContent().size(), page, profilePage.getTotalPages());
+
+        // Map to ProfileDetailResponse with additional stats
+        List<ProfileDetailResponse> profileResponses = profilePage.getContent().stream()
+                .map(profile -> {
+                    // Get subscriber count
+                    Long subscriberCount = subscriptionRepository.countByChannelId(profile.getId());
+
+                    // Get subscribing count (channels this user follows)
+                    Long subscribingCount = subscriptionRepository.countByUserId(profile.getId());
+
+                    return ProfileDetailResponse.builder()
+                            .id(profile.getId())
+                            .userId(profile.getUserId())
+                            .fullName(profile.getFullName())
+                            .dob(profile.getDob() != null ? profile.getDob().toString() : null)
+                            .city(profile.getCity())
+                            .avatarUrl(profile.getAvatarUrl())
+                            .bannerUrl(profile.getBannerUrl())
+                            .email(profile.getEmail())
+                            .description(profile.getDescription())
+                            .hasPassword(profile.isHasPassword())
+                            .subscriberCount(subscriberCount)
+                            .subscribingCount(subscribingCount)
+                            .createdAt(profile.getCreatedAt().toString())
+                            .build();
+                })
+                .toList();
+
+        PagedResponse<ProfileDetailResponse> response = PagedResponse.<ProfileDetailResponse>builder()
+                .content(profileResponses)
+                .page(profilePage.getNumber())
+                .size(profilePage.getSize())
+                .totalElements(profilePage.getTotalElements())
+                .totalPages(profilePage.getTotalPages())
+                .last(profilePage.isLast())
+                .build();
+
+        return response;
+    }
+
+    public Long getTotalUserCount() {
+        log.info("Getting total user count");
+        Long count = profileRepository.count();
+        log.info("Total users: {}", count);
+        return count;
     }
 }

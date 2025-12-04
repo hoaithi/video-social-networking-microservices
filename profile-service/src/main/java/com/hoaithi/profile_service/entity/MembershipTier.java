@@ -1,4 +1,4 @@
-package com.hoaithi.profile_service.entity;
-
-public class MembershipTier {
-}
+//package com.hoaithi.profile_service.entity;
+//
+//public class MembershipTier {
+//}

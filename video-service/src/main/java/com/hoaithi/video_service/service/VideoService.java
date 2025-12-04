@@ -324,6 +324,7 @@ import com.hoaithi.video_service.repository.*;
 import com.hoaithi.video_service.repository.httpclient.CommentClient;
 import com.hoaithi.video_service.repository.httpclient.FileClient;
 import com.hoaithi.video_service.repository.httpclient.ProfileClient;
+import com.hoaithi.video_service.repository.httpclient.SubClient;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -340,6 +341,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -357,6 +359,7 @@ public class VideoService {
     VideoReactionRepository videoReactionRepository;
     PlaylistRepository playlistRepository;
     ProfileClient profileClient;
+    SubClient subClient;
 
     public PagedResponse<VideoResponse> getVideos(int page, int size){
         log.info("=== Getting Videos - Page: {}, Size: {} ===", page, size);
@@ -715,5 +718,283 @@ public class VideoService {
                     .hasReacted(false)
                     .build();
         }
+    }
+
+    public DashboardResponse getDashboardStatsByProfile(String profileId) {
+        log.info("=== Calculating Dashboard Stats for Profile: {} ===", profileId);
+
+        // Step 1: Get all videos by profileId
+        List<Video> profileVideos = videoRepository.findAllByProfileId(profileId);
+        log.info("Found {} videos for profile: {}", profileVideos.size(), profileId);
+
+        // Step 2: Calculate total stats
+        long totalViews = profileVideos.stream()
+                .mapToLong(Video::getViewCount)
+                .sum();
+        long totalLikes = profileVideos.stream()
+                .mapToLong(Video::getLikeCount)
+                .sum();
+        long totalDislikes = profileVideos.stream()
+                .mapToLong(Video::getDislikeCount)
+                .sum();
+        long totalComments = profileVideos.stream()
+                .mapToLong(Video::getCommentCount)
+                .sum();
+
+        log.info("Stats calculated - Views: {}, Likes: {}, Dislikes: {}, Comments: {}",
+                totalViews, totalLikes, totalDislikes, totalComments);
+
+        Stats stats = Stats.builder()
+                .totalViews(totalViews)
+                .totalLikes(totalLikes)
+                .totalDislikes(totalDislikes)
+                .totalComments(totalComments)
+                .totalVideos((long) profileVideos.size())
+                .build();
+
+        // Step 3: Get subscriber count from Profile Service
+        Long subscriberCount = 0L;
+        try {
+            subscriberCount = subClient.getSubscriberCount(profileId).getResult();
+            log.info("Subscriber count: {}", subscriberCount);
+        } catch (Exception e) {
+            log.error("Error getting subscriber count: {}", e.getMessage());
+        }
+
+        // Step 4: Get top 5 videos based on engagement (views + likes)
+        List<TopVideo> topVideos = profileVideos.stream()
+                .sorted(Comparator
+                        .comparingLong((Video v) -> v.getViewCount() + v.getLikeCount())
+                        .reversed())
+                .limit(5)
+                .map(video -> mapToTopVideo(video, profileId))
+                .toList();
+
+        log.info("Top {} videos selected", topVideos.size());
+
+        // Step 5: Build response
+        return DashboardResponse.builder()
+                .stats(stats)
+                .totalUsers(subscriberCount)
+                .topVideos(topVideos)
+                .build();
+    }
+
+    public DashboardResponse getAdminDashboardStats() {
+        log.info("=== Admin: Calculating Overall Dashboard Stats ===");
+
+        // Step 1: Get ALL videos from all users
+        List<Video> allVideos = videoRepository.findAll();
+        log.info("Found {} total videos across all users", allVideos.size());
+
+        // Step 2: Calculate total stats for all videos
+        long totalViews = allVideos.stream()
+                .mapToLong(Video::getViewCount)
+                .sum();
+        long totalLikes = allVideos.stream()
+                .mapToLong(Video::getLikeCount)
+                .sum();
+        long totalDislikes = allVideos.stream()
+                .mapToLong(Video::getDislikeCount)
+                .sum();
+        long totalComments = allVideos.stream()
+                .mapToLong(Video::getCommentCount)
+                .sum();
+
+        log.info("Overall Stats - Views: {}, Likes: {}, Dislikes: {}, Comments: {}",
+                totalViews, totalLikes, totalDislikes, totalComments);
+
+        Stats stats = Stats.builder()
+                .totalViews(totalViews)
+                .totalLikes(totalLikes)
+                .totalDislikes(totalDislikes)
+                .totalComments(totalComments)
+                .totalVideos((long) allVideos.size())
+                .build();
+
+        // Step 3: Get total user count from Profile Service
+        Long totalUsers = 0L;
+        try {
+            totalUsers = profileClient.getTotalUserCount().getResult();
+            log.info("Total users in system: {}", totalUsers);
+        } catch (Exception e) {
+            log.error("Error getting total user count: {}", e.getMessage());
+        }
+
+        // Step 4: Get top 5 videos based on engagement (views + likes) from ALL videos
+        List<TopVideo> topVideos = allVideos.stream()
+                .sorted(Comparator
+                        .comparingLong((Video v) -> v.getViewCount() + v.getLikeCount())
+                        .reversed())
+                .limit(5)
+                .map(this::mapToTopVideoWithProfileFetch)
+                .toList();
+
+        log.info("Top {} videos selected from all videos", topVideos.size());
+
+        // Step 5: Build response
+        return DashboardResponse.builder()
+                .stats(stats)
+                .totalUsers(totalUsers)
+                .topVideos(topVideos)
+                .build();
+    }
+
+
+    public PagedResponse<VideoResponse> getAllVideosForAdmin(
+            int page, int size, String search, Boolean isPremium, String sortBy, String sortDirection) {
+
+        log.info("=== Getting All Videos - Filters: search={}, isPremium={}, sort={} {} ===",
+                search, isPremium, sortBy, sortDirection);
+
+        // Build Sort
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("asc")
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+        Sort sort = Sort.by(direction, sortBy);
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        // Get videos with filters
+        Page<Video> videoPage;
+
+        if (search != null && !search.isEmpty() && isPremium != null) {
+            // Filter by both search and isPremium
+            videoPage = videoRepository.findByTitleContainingIgnoreCaseAndIsPremium(
+                    search, isPremium, pageable);
+            log.info("Applied filters: search + isPremium");
+        } else if (search != null && !search.isEmpty()) {
+            // Filter by search only
+            videoPage = videoRepository.findByTitleContainingIgnoreCase(search, pageable);
+            log.info("Applied filter: search only");
+        } else if (isPremium != null) {
+            // Filter by isPremium only
+            videoPage = videoRepository.findByIsPremium(isPremium, pageable);
+            log.info("Applied filter: isPremium only");
+        } else {
+            // No filters
+            videoPage = videoRepository.findAll(pageable);
+            log.info("No filters applied");
+        }
+
+        log.info("Found {} videos on page {} of {}",
+                videoPage.getContent().size(), page, videoPage.getTotalPages());
+
+        // Map to VideoResponse with profile info
+        List<VideoResponse> videoResponses = videoPage.getContent().stream()
+                .map(video -> {
+                    VideoResponse response = mapToVideoResponse(video);
+
+                    // Fetch profile info
+                    try {
+                        ProfileResponse profile = profileClient.getProfileById(video.getProfileId()).getResult();
+                        response.setProfileImage(profile.getAvatarUrl());
+                        response.setProfileName(profile.getFullName());
+                    } catch (Exception e) {
+                        log.error("Error fetching profile for video {}: {}", video.getId(), e.getMessage());
+                    }
+
+                    return response;
+                })
+                .toList();
+
+        return PagedResponse.<VideoResponse>builder()
+                .content(videoResponses)
+                .page(videoPage.getNumber())
+                .size(videoPage.getSize())
+                .totalElements(videoPage.getTotalElements())
+                .totalPages(videoPage.getTotalPages())
+                .last(videoPage.isLast())
+                .build();
+    }
+
+    private VideoResponse mapToVideoResponse(Video video) {
+        return VideoResponse.builder()
+                .id(video.getId())
+                .title(video.getTitle())
+                .description(video.getDescription())
+                .duration(video.getDuration())
+                .viewCount(video.getViewCount())
+                .thumbnailUrl(video.getThumbnailUrl())
+                .videoUrl(video.getVideoUrl())
+                .profileId(video.getProfileId())
+//                .publishedAt(video.getPublishedAt().toString())
+                .likeCount(video.getLikeCount())
+                .dislikeCount(video.getDislikeCount())
+                .commentCount(video.getCommentCount())
+                .isPremium(video.isPremium())
+                .build();
+    }
+
+    private TopVideo mapToTopVideo(Video video, String profileId) {
+        log.info("Mapping video to TopVideo: {}", video.getId());
+
+        // Get profile information
+        ProfileResponse profile = null;
+        try {
+            profile = profileClient.getProfileById(profileId).getResult();
+        } catch (Exception e) {
+            log.error("Error getting profile info: {}", e.getMessage());
+        }
+
+        // Calculate engagement score (simple formula: views + likes * 2 - dislikes)
+        double engagementScore = video.getViewCount()
+                + (video.getLikeCount() * 2.0)
+                - video.getDislikeCount();
+
+        return TopVideo.builder()
+                .id(video.getId())
+                .title(video.getTitle())
+                .description(video.getDescription())
+                .viewCount(video.getViewCount())
+                .thumbnailUrl(video.getThumbnailUrl())
+                .videoUrl(video.getVideoUrl())
+                .profileId(video.getProfileId())
+                .profileImage(profile != null ? profile.getAvatarUrl() : null)
+                .profileName(profile != null ? profile.getFullName() : null)
+                .publishedAt(video.getPublishedAt().toString())
+                .likeCount(video.getLikeCount())
+                .dislikeCount(video.getDislikeCount())
+                .commentCount(video.getCommentCount())
+                .hearted(false)
+                .engagementScore(engagementScore)
+                .isPremium(video.isPremium())
+                .build();
+    }
+
+    private TopVideo mapToTopVideoWithProfileFetch(Video video) {
+        log.info("Mapping video to TopVideo with profile fetch: {}", video.getId());
+
+        // Get profile information using video's profileId
+        ProfileResponse profile = null;
+        try {
+            profile = profileClient.getProfileById(video.getProfileId()).getResult();
+        } catch (Exception e) {
+            log.error("Error getting profile info for video {}: {}", video.getId(), e.getMessage());
+        }
+
+        // Calculate engagement score
+        double engagementScore = video.getViewCount()
+                + (video.getLikeCount() * 2.0)
+                - video.getDislikeCount();
+
+        return TopVideo.builder()
+                .id(video.getId())
+                .title(video.getTitle())
+                .description(video.getDescription())
+                .viewCount(video.getViewCount())
+                .thumbnailUrl(video.getThumbnailUrl())
+                .videoUrl(video.getVideoUrl())
+                .profileId(video.getProfileId())
+                .profileImage(profile != null ? profile.getAvatarUrl() : null)
+                .profileName(profile != null ? profile.getFullName() : null)
+                .publishedAt(video.getPublishedAt().toString())
+                .likeCount(video.getLikeCount())
+                .dislikeCount(video.getDislikeCount())
+                .commentCount(video.getCommentCount())
+                .hearted(false)
+                .engagementScore(engagementScore)
+                .isPremium(video.isPremium())
+                .build();
     }
 }

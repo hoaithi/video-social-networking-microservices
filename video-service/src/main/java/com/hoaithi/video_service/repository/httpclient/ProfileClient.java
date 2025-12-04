@@ -12,4 +12,10 @@ public interface ProfileClient {
 
     @GetMapping("/{id}")
     ApiResponse<ProfileResponse> getProfileById(@PathVariable String id);
+
+    @GetMapping("/subscription/{channelId}/count")
+    ApiResponse<Long> getSubscriberCount(@PathVariable("channelId") String channelId);
+
+    @GetMapping("/count/total")
+    ApiResponse<Long> getTotalUserCount();
 }

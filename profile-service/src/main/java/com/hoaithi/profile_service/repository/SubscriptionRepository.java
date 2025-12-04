@@ -13,7 +13,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Stri
     boolean existsByUserIdAndChannelId(String userProfileId, String channelProfileId);
 
     Long countByChannelId(String channelProfileId);
-
+    Long countByUserId(String userId);
     Optional<Subscription> findByUserIdAndChannelId(String userId, String channelId);
 
     List<Subscription> findByUserId(String userId);
