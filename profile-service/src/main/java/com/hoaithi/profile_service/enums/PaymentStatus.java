@@ -1,4 +1,4 @@
-package com.hoaithidev.vidsonet_backend.enums;
+package com.hoaithi.profile_service.enums;
 
 public enum PaymentStatus {
     PENDING,

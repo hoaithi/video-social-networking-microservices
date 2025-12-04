@@ -1,4 +1,4 @@
-package com.hoaithidev.vidsonet_backend.dto.payment;
+package com.hoaithi.profile_service.dto.request;
 
 public class CreatePaymentRequest {
 }

@@ -18,6 +18,15 @@ public enum ErrorCode {
     PROFILE_NOT_EXISTED(1011, "Profile not existed", HttpStatus.NOT_FOUND),
     USER_CHANNEL_SAME(1012,"User and Channel are the same", HttpStatus.BAD_REQUEST),
     SUBSCRIPTION_NOT_EXISTED(1011, "Subscription not existed", HttpStatus.NOT_FOUND),
+    RESOURCE_NOT_FOUND(2001, "Resource not found", HttpStatus.NOT_FOUND),
+    ALREADY_MEMBER(2002, "You already have an active membership", HttpStatus.BAD_REQUEST),
+    IS_NOT_ACTIVE(2003, "This resource is not active", HttpStatus.BAD_REQUEST),
+    DUPLICATE_RESOURCE(2004, "Resource already exists", HttpStatus.BAD_REQUEST),
+
+    PAYMENT_FAILED(3001, "Payment processing failed", HttpStatus.BAD_REQUEST),
+    FORBIDDEN(3002, "Action is forbidden", HttpStatus.FORBIDDEN),
+    INVALID_REQUEST(3003, "Invalid request", HttpStatus.BAD_REQUEST),
+    PAYMENT_CANCELED(3004, "Payment was canceled", HttpStatus.BAD_REQUEST);
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

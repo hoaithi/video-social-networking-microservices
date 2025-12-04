@@ -6,23 +6,21 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MembershipTierDTO {
+public class MembershipDTO {
     private Long id;
-    private String name;
-    private String description;
-    private BigDecimal price;
-    private Integer durationMonths;
+    private LocalDateTime startDate;
+    private LocalDateTime endDate;
     @JsonProperty("isActive")
     private boolean isActive;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private String channelId;
-    private String channelName;
+    private MembershipTierDTO tier;
+    private ProfileResponse subscriber;
+    private ProfileResponse channel;
 }

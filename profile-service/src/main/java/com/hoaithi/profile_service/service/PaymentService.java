@@ -1,24 +1,22 @@
-package com.hoaithidev.vidsonet_backend.service.impl;
+package com.hoaithi.profile_service.service;
 
+import com.hoaithi.profile_service.entity.Membership;
+import com.hoaithi.profile_service.entity.MembershipTier;
+import com.hoaithi.profile_service.entity.Payment;
+import com.hoaithi.profile_service.entity.Profile;
+import com.hoaithi.profile_service.enums.PaymentStatus;
+import com.hoaithi.profile_service.exception.AppException;
+import com.hoaithi.profile_service.exception.ErrorCode;
+import com.hoaithi.profile_service.repository.MembershipRepository;
+import com.hoaithi.profile_service.repository.MembershipTierRepository;
+import com.hoaithi.profile_service.repository.PaymentRepository;
+import com.hoaithi.profile_service.repository.ProfileRepository;
+import com.hoaithi.profile_service.utils.ProfileUtil;
 import com.hoaithidev.vidsonet_backend.dto.payment.CreatePaymentResponse;
 import com.hoaithidev.vidsonet_backend.dto.payment.PaymentCaptureResponse;
-import com.hoaithidev.vidsonet_backend.enums.PaymentStatus;
-import com.hoaithidev.vidsonet_backend.exception.ErrorCode;
-import com.hoaithidev.vidsonet_backend.exception.ResourceNotFoundException;
-import com.hoaithidev.vidsonet_backend.exception.VidsonetException;
-import com.hoaithidev.vidsonet_backend.model.Membership;
-import com.hoaithidev.vidsonet_backend.model.MembershipTier;
-import com.hoaithidev.vidsonet_backend.model.Payment;
-import com.hoaithidev.vidsonet_backend.model.User;
-import com.hoaithidev.vidsonet_backend.repository.MembershipRepository;
-import com.hoaithidev.vidsonet_backend.repository.MembershipTierRepository;
-import com.hoaithidev.vidsonet_backend.repository.PaymentRepository;
-import com.hoaithidev.vidsonet_backend.repository.UserRepository;
-import com.hoaithidev.vidsonet_backend.service.PaymentService;
 import com.paypal.core.PayPalHttpClient;
 import com.paypal.http.HttpResponse;
 import com.paypal.orders.*;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,7 +24,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,13 +32,14 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class PaymentServiceImpl implements PaymentService {
+public class PaymentService {
 
     private final PayPalHttpClient payPalClient;
     private final MembershipTierRepository membershipTierRepository;
-    private final UserRepository userRepository;
+    private final ProfileRepository profileRepository;
     private final MembershipRepository membershipRepository;
     private final PaymentRepository paymentRepository;
+    private final ProfileUtil profileUtil;
 
     @Value("${paypal.success-url}")
     private String successUrl;
@@ -49,31 +47,31 @@ public class PaymentServiceImpl implements PaymentService {
     @Value("${paypal.cancel-url}")
     private String cancelUrl;
 
-    @Override
     @Transactional
-    public CreatePaymentResponse createPayment(Long membershipTierId, Long userId) {
+    public CreatePaymentResponse createPayment(Long membershipTierId) {
+        String userId = profileUtil.getCurrentUserId();
         // 1. Lấy thông tin membership tier và user
         MembershipTier membershipTier = membershipTierRepository.findById(membershipTierId)
-                .orElseThrow(() -> new ResourceNotFoundException("Membership tier not found with id: " + membershipTierId));
+                .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_EXISTED));
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        Profile user = profileRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_EXISTED));
 
         // Kiểm tra người dùng không tự đăng ký kênh của mình
         if (user.getId().equals(membershipTier.getUser().getId())) {
-            throw new VidsonetException(ErrorCode.ALREADY_MEMBER, "You cannot subscribe to your own channel");
+            throw new AppException(ErrorCode.USER_CHANNEL_SAME);
         }
 
         // Kiểm tra membership tier có active không
         if (!membershipTier.isActive()) {
-            throw new VidsonetException(ErrorCode.IS_NOT_ACTIVE, "This membership tier is no longer active");
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION); // Hoặc tạo thêm code ACTIVE_TIER_REQUIRED
         }
 
         // Kiểm tra xem user đã có membership active chưa
         Optional<Membership> existingMembership = membershipRepository.findActiveByUserIdAndChannelId(
                 userId, membershipTier.getUser().getId());
         if (existingMembership.isPresent()) {
-            throw new VidsonetException(ErrorCode.DUPLICATE_RESOURCE, "You already have an active membership for this channel");
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION); // Hoặc tạo thêm code DUPLICATE_MEMBERSHIP
         }
 
         try {
@@ -101,7 +99,7 @@ public class PaymentServiceImpl implements PaymentService {
             amount.value(membershipTier.getPrice().toString());
 
             purchaseUnitRequest.amountWithBreakdown(amount);
-            purchaseUnitRequest.description("Membership: " + membershipTier.getName() + " for " + membershipTier.getUser().getChannelName());
+            purchaseUnitRequest.description("Membership: " + membershipTier.getName() + " for " + membershipTier.getUser().getFullName());
             purchaseUnitRequests.add(purchaseUnitRequest);
 
             orderRequest.purchaseUnits(purchaseUnitRequests);
@@ -140,7 +138,7 @@ public class PaymentServiceImpl implements PaymentService {
                     .filter(link -> "approve".equals(link.rel()))
                     .findFirst()
                     .map(LinkDescription::href)
-                    .orElseThrow(() -> new VidsonetException(ErrorCode.PAYMENT_FAILED, "Could not find approval URL"));
+                    .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION));
 
             return CreatePaymentResponse.builder()
                     .paymentId(order.id())
@@ -150,66 +148,57 @@ public class PaymentServiceImpl implements PaymentService {
 
         } catch (IOException e) {
             log.error("Error creating PayPal payment: {}", e.getMessage());
-            throw new VidsonetException(ErrorCode.PAYMENT_FAILED, "Could not create PayPal payment: " + e.getMessage());
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
         } catch (Exception e) {
             log.error("Unexpected error with PayPal payment: {}", e.getMessage());
-            throw new VidsonetException(ErrorCode.PAYMENT_FAILED, "Error processing payment: " + e.getMessage());
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
         }
     }
 
-    @Override
     @Transactional
-    public PaymentCaptureResponse capturePayment(String paymentId, String payerId, Long userId) {
+    public PaymentCaptureResponse capturePayment(String paymentId, String payerId) {
+        String userId = profileUtil.getCurrentUserId();
         try {
-            // 1. Tìm membership và payment dựa trên paymentId
             Payment payment = paymentRepository.findByTransactionId(paymentId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Payment not found with id: " + paymentId));
+                    .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_EXISTED));
 
             Membership membership = payment.getMembership();
 
-            // 2. Kiểm tra xem payment có thuộc về user không
             if (!membership.getUser().getId().equals(userId)) {
-                throw new VidsonetException(ErrorCode.FORBIDDEN, "Payment does not belong to this user");
+                throw new AppException(ErrorCode.UNAUTHORIZED);
             }
 
-            // 3. Kiểm tra trạng thái payment
             if (payment.getPaymentStatus() != PaymentStatus.PENDING) {
-                throw new VidsonetException(ErrorCode.PAYMENT_FAILED, "Payment is not in PENDING state");
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
             }
 
-            // 4. Tạo request capture payment
             OrdersCaptureRequest request = new OrdersCaptureRequest(paymentId);
             request.requestBody(new OrderRequest());
 
-            // 5. Gọi PayPal API để capture payment
             HttpResponse<Order> response = payPalClient.execute(request);
             Order capturedOrder = response.result();
 
-            // 6. Cập nhật trạng thái payment và membership
             if ("COMPLETED".equals(capturedOrder.status())) {
                 payment.setPaymentStatus(PaymentStatus.COMPLETED);
                 payment.setPaymentDate(LocalDateTime.now());
 
-                // Lấy transaction ID từ capture
                 String transactionId = null;
                 if (capturedOrder.purchaseUnits() != null && !capturedOrder.purchaseUnits().isEmpty()) {
-                    PurchaseUnit purchaseUnit = capturedOrder.purchaseUnits().get(0);
+                    PurchaseUnit purchaseUnit = capturedOrder.purchaseUnits().getFirst();
                     if (purchaseUnit.payments() != null &&
                             purchaseUnit.payments().captures() != null &&
                             !purchaseUnit.payments().captures().isEmpty()) {
 
-                        transactionId = purchaseUnit.payments().captures().get(0).id();
+                        transactionId = purchaseUnit.payments().captures().getFirst().id();
                     }
                 }
 
                 if (transactionId == null) {
                     log.warn("Could not extract transaction ID from PayPal response");
-                    transactionId = paymentId; // Fallback to payment ID if capture ID not found
+                    transactionId = paymentId;
                 }
 
                 payment.setTransactionId(transactionId);
-
-                // Kích hoạt membership
                 membership.setActive(true);
                 membership.setStartDate(LocalDateTime.now());
                 membership.setUpdatedAt(LocalDateTime.now());
@@ -227,38 +216,33 @@ public class PaymentServiceImpl implements PaymentService {
             } else {
                 payment.setPaymentStatus(PaymentStatus.FAILED);
                 paymentRepository.save(payment);
-
-                throw new VidsonetException(ErrorCode.PAYMENT_FAILED, "Payment capture failed: " + capturedOrder.status());
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
             }
 
         } catch (IOException e) {
             log.error("Error capturing PayPal payment: {}", e.getMessage());
-            throw new VidsonetException(ErrorCode.PAYMENT_FAILED, "Could not capture PayPal payment: " + e.getMessage());
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
         } catch (Exception e) {
             log.error("Unexpected error with PayPal capture: {}", e.getMessage());
-            throw new VidsonetException(ErrorCode.PAYMENT_FAILED, "Error capturing payment: " + e.getMessage());
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
         }
     }
 
-    @Override
     @Transactional
     public Membership confirmMembership(Long membershipId, String transactionId) {
         Membership membership = membershipRepository.findById(membershipId)
-                .orElseThrow(() -> new ResourceNotFoundException("Membership not found with id: " + membershipId));
+                .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_EXISTED));
 
         Payment payment = membership.getPayment();
 
-        // Kiểm tra transaction ID
         if (!payment.getTransactionId().equals(transactionId)) {
-            throw new VidsonetException(ErrorCode.INVALID_REQUEST, "Transaction ID does not match");
+            throw new AppException(ErrorCode.INVALID_KEY);
         }
 
-        // Kiểm tra trạng thái payment
         if (payment.getPaymentStatus() != PaymentStatus.COMPLETED) {
-            throw new VidsonetException(ErrorCode.PAYMENT_FAILED, "Payment is not completed");
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
         }
 
-        // Kích hoạt membership nếu chưa active
         if (!membership.isActive()) {
             membership.setActive(true);
             membership.setUpdatedAt(LocalDateTime.now());
@@ -268,17 +252,14 @@ public class PaymentServiceImpl implements PaymentService {
         return membership;
     }
 
-    @Override
     @Transactional
     public void cancelPayment(String paymentId) {
         Payment payment = paymentRepository.findByTransactionId(paymentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Payment not found with id: " + paymentId));
+                .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_EXISTED));
 
-        // Cập nhật trạng thái payment
         payment.setPaymentStatus(PaymentStatus.CANCELED);
         paymentRepository.save(payment);
 
-        // Cập nhật membership
         Membership membership = payment.getMembership();
         membership.setActive(false);
         membership.setUpdatedAt(LocalDateTime.now());

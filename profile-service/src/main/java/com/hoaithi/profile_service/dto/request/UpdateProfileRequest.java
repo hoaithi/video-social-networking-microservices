@@ -10,7 +10,7 @@ import java.time.LocalDate;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class UpdateProfileRequest {
+public class    UpdateProfileRequest {
     String id;
     String fullName;
     LocalDate dob;
