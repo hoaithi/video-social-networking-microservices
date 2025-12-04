@@ -23,8 +23,8 @@ springdoc:
     - group: internal
       paths-to-match: /internal/profile/**
 paypal:
-  client-id: Ab2FU5u97cgWPv2X7decFTugtAHIpMcD7RCOwaJQ033uD4H_bI7qTmmtcp2wxXIuDhhjNxF8r43Od2fg
-  client-secret: ELBp27evxbc7eI6GWs4RLB_KAyrswZZfIpvQmM9TdBG-7kcYo75t6Ht7ynYYsSmjLNV4rtNSWQBcx2bz
+  client-id: AXGhOWS38swe3N1OXVAHBn7NgN-LO4_bDLgQSiq-sJaqZ6dr4b5s9O081f8hT2kBhz7Lb67dqWvymKOu
+  client-secret: ENw7SI0Zw7QAraH6xxEEDcP8XiTHeXxDW-RoWsh3QVBaSKxmHr6aat9qBEscwqGEyUHNEg_zU0U4j8fR
   mode: sandbox # sandbox hoặc live
   success-url: ${app.frontend-url}/membership/success
   cancel-url: ${app.frontend-url}/membership/cancel
