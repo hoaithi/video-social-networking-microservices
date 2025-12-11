@@ -32,9 +32,9 @@ public class ChatController {
     @PostMapping("/generate-title")
     public ApiResponse<List<TitleResponse>> generateTitle(
             @RequestPart("videoFile") MultipartFile video) throws Exception {
-        log.info("=== START /generate-title endpoint ===");
-        log.info("Received video file: name={}, size={} bytes, contentType={}",
-                video.getOriginalFilename(), video.getSize(), video.getContentType());
+//        log.info("=== START /generate-title endpoint ===");
+//        log.info("Received video file: name={}, size={} bytes, contentType={}",
+//                video.getOriginalFilename(), video.getSize(), video.getContentType());
         return ApiResponse.<List<TitleResponse>>builder()
                 .message("")
                 .result(chatService.generateTilte(video))

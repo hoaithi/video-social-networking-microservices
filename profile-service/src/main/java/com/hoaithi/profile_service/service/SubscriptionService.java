@@ -1,5 +1,7 @@
 package com.hoaithi.profile_service.service;
 
+import com.hoaithi.event.dto.UserSubscribedEvent;
+import com.hoaithi.event.dto.UserUnsubscribedEvent;
 import com.hoaithi.profile_service.dto.response.ProfileResponse;
 import com.hoaithi.profile_service.dto.response.SubscriptionResponse;
 import com.hoaithi.profile_service.entity.Profile;
@@ -13,6 +15,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -27,7 +30,7 @@ import java.util.List;
 public class SubscriptionService {
     ProfileRepository profileRepository;
     SubscriptionRepository subscriptionRepository;
-
+    KafkaTemplate<String, Object> kafkaTemplate;
 
     public boolean subscribe(String channelId){
         String userId = getCurrentUserId();
@@ -44,6 +47,14 @@ public class SubscriptionService {
                     .channel(channelProfile)
                     .build());
         }
+        // publish event to kafka
+        kafkaTemplate.send("subscribe-topic", UserSubscribedEvent.builder()
+                .subscriberId(userId)
+                .channelId(channelId)
+                .avatarUrl(channelProfile.getAvatarUrl())
+                .fullName(channelProfile.getFullName())
+                .build());
+
         return isSubscribed(channelId);
     }
     public void unsubscribe(String channelId){
@@ -51,6 +62,11 @@ public class SubscriptionService {
         Subscription subscription = subscriptionRepository.findByUserIdAndChannelId(userId, channelId)
                 .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_EXISTED));
         subscriptionRepository.delete(subscription);
+        // publish event to kafka
+        kafkaTemplate.send("unsubscribe-topic", UserUnsubscribedEvent.builder()
+                .unsubscriberId(userId)
+                .channelId(channelId)
+                .build());
     }
 
     public boolean isSubscribed(String channelProfileId){

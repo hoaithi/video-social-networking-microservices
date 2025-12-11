@@ -1,98 +1,70 @@
-//package com.hoaithi.notification_service.controller;
-//
-//import com.hoaithi.event.dto.CreationUserEvent;
-//import com.hoaithi.event.dto.ForgetPasswordEvent;
-//import com.hoaithi.notification_service.service.EmailService;
-//import lombok.AccessLevel;
-//import lombok.RequiredArgsConstructor;
-//import lombok.experimental.FieldDefaults;
-//import lombok.extern.slf4j.Slf4j;
-//import org.springframework.kafka.annotation.KafkaListener;
-//import org.springframework.stereotype.Component;
-//
-//@Slf4j
-//@Component
-//@RequiredArgsConstructor
-//@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-//public class NotificationController {
-//
-//
-//    EmailService emailService;
-//    /**
-//     * This method listens to the "user-topic" Kafka topic and processes incoming messages.
-//     * It logs the received message for notification purposes.
-//     *
-//     * @param event The message received from the Kafka topic.
-//     */
-//    @KafkaListener(topics = "user-topic", groupId = "notification-group")
-//    public void createUserNotification(CreationUserEvent event) {
-//        emailService.sendEmail(event.getEmail(),
-//                "Welcome to our service, Video Social Networking Platform"
-//                , "Thank you for registering with Video Social Networking Platform!");
-//    }
-//
-//    @KafkaListener(topics = "forget-password", groupId = "notification-group")
-//    public void sendOtpForgetPassword(ForgetPasswordEvent event){
-//        emailService.sendEmail(event.getEmail(), "send otp reset password", event.getOtp());
-//    }
-//}
-
-
 package com.hoaithi.notification_service.controller;
 
-import com.hoaithi.event.dto.CreationUserEvent;
-import com.hoaithi.event.dto.ForgetPasswordEvent;
-import com.hoaithi.notification_service.service.EmailService;
-import lombok.AccessLevel;
+import com.hoaithi.notification_service.dto.response.ApiResponse;
+import com.hoaithi.notification_service.dto.response.NotificationDTO;
+import com.hoaithi.notification_service.service.NotificationService;
 import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.stereotype.Component;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
 
-@Slf4j
-@Component
+import java.util.List;
+
+@RestController
+@RequestMapping("/notifications")
 @RequiredArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class NotificationController {
 
-    EmailService emailService;
+    private final NotificationService notificationService;
 
-    /**
-     * Lắng nghe topic user-topic và gửi email chào mừng
-     */
-    @KafkaListener(topics = "user-topic", groupId = "notification-group")
-    public void createUserNotification(CreationUserEvent event) {
-        log.info("Received user creation event for email: {}", event.getEmail());
+    @GetMapping
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<Page<NotificationDTO>>> getUserNotifications(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
 
-        // Trích xuất username từ email (hoặc từ event nếu có field username)
-        String username = extractUsernameFromEmail(event.getEmail());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<NotificationDTO> notifications = notificationService.getUserNotifications(pageable);
 
-        emailService.sendWelcomeEmail(event.getEmail(), username);
-
-        log.info("Welcome email sent successfully to: {}", event.getEmail());
+        return ResponseEntity.ok(ApiResponse.<Page<NotificationDTO>>builder()
+                .message("Notifications retrieved successfully")
+                .result(notifications)
+                .build());
     }
 
-    /**
-     * Lắng nghe topic forget-password và gửi OTP
-     */
-    @KafkaListener(topics = "forget-password", groupId = "notification-group")
-    public void sendOtpForgetPassword(ForgetPasswordEvent event) {
-        log.info("Received forget password event for email: {}", event.getEmail());
+    @GetMapping("/unread/count")
+    public ResponseEntity<ApiResponse<Long>> getUnreadCount() {
+        long count = notificationService.getUnreadCount();
 
-        emailService.sendOtpEmail(event.getEmail(), event.getOtp());
-
-        log.info("OTP email sent successfully to: {}", event.getEmail());
+        return ResponseEntity.ok(ApiResponse.<Long>builder()
+                .message("Unread notification count retrieved successfully")
+                .result(count)
+                .build());
     }
 
-    /**
-     * Helper method để trích xuất username từ email
-     * Ví dụ: user@example.com -> user
-     */
-    private String extractUsernameFromEmail(String email) {
-        if (email != null && email.contains("@")) {
-            return email.substring(0, email.indexOf("@"));
-        }
-        return "User";
+    @PutMapping("/{id}/read")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<Void>> markAsRead(
+            @PathVariable String id) {
+
+        notificationService.markAsRead(id);
+
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .message("Notification marked as read")
+                .build());
+    }
+    @PutMapping("/read-all")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<Void>> markAllAsRead() {
+        notificationService.markAllAsRead();
+
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .message("All notifications marked as read")
+                .build());
     }
 }
