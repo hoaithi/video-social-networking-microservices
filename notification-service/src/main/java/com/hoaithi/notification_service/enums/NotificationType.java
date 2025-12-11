@@ -1,0 +1,20 @@
+package com.hoaithi.notification_service.enums;
+
+public enum NotificationType {
+    VIDEO_LIKE,
+    VIDEO_DISLIKE,
+    VIDEO_COMMENT,
+    COMMENT_LIKE,
+    COMMENT_DISLIKE,
+    COMMENT_REPLY,
+    COMMENT_HEART,
+    POST_COMMENT_HEART,
+    NEW_SUBSCRIBER,
+    NEW_VIDEO,
+    NEW_POST,
+    POST_COMMENT,
+    POST_LIKE,
+    POST_DISLIKE,
+    MEMBERSHIP_EXPIRED,
+    MEMBERSHIP_PAYMENT
+}

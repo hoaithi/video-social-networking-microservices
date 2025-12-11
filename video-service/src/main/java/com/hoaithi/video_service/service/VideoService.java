@@ -312,6 +312,7 @@
 
 package com.hoaithi.video_service.service;
 
+import com.hoaithi.event.dto.VideoUploadedEvent;
 import com.hoaithi.video_service.dto.request.VideoCreationRequest;
 import com.hoaithi.video_service.dto.request.VideoUpdationRequest;
 import com.hoaithi.video_service.dto.response.*;
@@ -333,6 +334,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -360,6 +362,7 @@ public class VideoService {
     PlaylistRepository playlistRepository;
     ProfileClient profileClient;
     SubClient subClient;
+    KafkaTemplate<String, Object> kafkaTemplate;
 
     public PagedResponse<VideoResponse> getVideos(int page, int size){
         log.info("=== Getting Videos - Page: {}, Size: {} ===", page, size);
@@ -473,6 +476,9 @@ public class VideoService {
 
         log.info("=== Video Retrieved Successfully ===");
 
+        // push event
+
+
         return response;
     }
 
@@ -575,8 +581,23 @@ public class VideoService {
 
         VideoResponse response = videoMapper.toVideoResponse(createdVideo);
         response.setPremium(createdVideo.isPremium());
+
+        ProfileResponse profileResponse = profileClient.getProfileById(response.getProfileId()).getResult();
+        VideoUploadedEvent event = VideoUploadedEvent.builder()
+                .videoId(video.getId())
+                .channelId(video.getProfileId())
+                .title(video.getTitle())
+                .thumbnailUrl(video.getThumbnailUrl())
+                .description(video.getDescription())
+                .uploadedAt(LocalDateTime.now())
+                .avatarUrl(profileResponse.getAvatarUrl())
+                .fullName(profileResponse.getFullName())
+                .build();
+        kafkaTemplate.send("video-upload", event);
         return response;
     }
+
+
 
     private static double getVideoDuration(File file) throws Exception {
         try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(file)) {
