@@ -6,12 +6,16 @@ import com.hoaithi.post_service.dto.response.PagedResponse;
 import com.hoaithi.post_service.dto.response.PostResponse;
 import com.hoaithi.post_service.dto.response.ProfileResponse;
 import com.hoaithi.post_service.entity.Post;
+import com.hoaithi.post_service.entity.PostReaction;
+import com.hoaithi.post_service.enums.ReactionType;
 import com.hoaithi.post_service.exception.AppException;
 import com.hoaithi.post_service.exception.ErrorCode;
 import com.hoaithi.post_service.mapper.PostMapper;
+import com.hoaithi.post_service.repository.PostReactionRepository;
 import com.hoaithi.post_service.repository.PostRepository;
 import com.hoaithi.post_service.repository.httpclient.FileClient;
 import com.hoaithi.post_service.repository.httpclient.ProfileClient;
+import com.hoaithi.post_service.utils.ProfileUtil;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -23,9 +27,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -36,6 +43,8 @@ public class PostService {
     PostMapper postMapper;
     FileClient fileClient;
     ProfileClient profileClient;
+    PostReactionRepository postReactionRepository;
+    ProfileUtil profileUtil;
     /**
      * Creates a new post.
      *
@@ -44,9 +53,11 @@ public class PostService {
      */
     public PostResponse createPost(CreationPostRequest request, MultipartFile image) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
+        ProfileResponse profileResponse = profileClient.getProfileById(profileUtil.getCurrentUserId()).getResult();
         Post post = Post.builder()
-                .profileId(authentication.getName())
+                .profileId(profileResponse.getId())
+                .profileImage(profileResponse.getAvatarUrl())
+                .profileName(profileResponse.getFullName())
                 .content(request.getContent())
                 .title(request.getTitle())
                 .imageUrl(fileClient.uploadFile(image))
@@ -78,13 +89,7 @@ public class PostService {
         }
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Post> posts = postRepository.findByProfileId(profileId, pageable);
-        Page<PostResponse> responses = posts.map((post) -> {
-            PostResponse postResponse = postMapper.toCreationPostResponse(post);
-            ProfileResponse profileResponse = profileClient.getProfileById(postResponse.getProfileId()).getResult();
-            postResponse.setProfileImage(profileResponse.getAvatarUrl());
-            postResponse.setProfileName(profileResponse.getFullName());
-            return postResponse;
-        });
+        Page<PostResponse> responses = posts.map(postMapper::toCreationPostResponse);
         return PagedResponse.<PostResponse>builder()
                 .content(responses.getContent())
                 .page(responses.getNumber())
@@ -121,6 +126,103 @@ public class PostService {
         }
     }
 
+    @Transactional
+    public PostResponse likePost(String postId) {
+
+        String currentUserId = profileUtil.getCurrentUserId();
+
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new AppException(ErrorCode.POST_NOT_EXISTED));
+
+        Optional<PostReaction> existingReaction =
+                postReactionRepository.findByUserIdAndPostId(currentUserId, postId);
+
+        if (existingReaction.isPresent()) {
+            PostReaction reaction = existingReaction.get();
+
+            // Case 1: already liked → remove like
+            if (reaction.getReactionType() == ReactionType.LIKE) {
+                postReactionRepository.delete(reaction);
+                post.setLikeCount(post.getLikeCount() - 1);
+            }
+            // Case 2: was DISLIKE → change to LIKE
+            else {
+                reaction.setReactionType(ReactionType.LIKE);
+                reaction.setCreatedAt(LocalDateTime.now());
+                postReactionRepository.save(reaction);
+
+                post.setLikeCount(post.getLikeCount() + 1);
+                post.setDislikeCount(post.getDislikeCount() - 1);
+            }
+
+        } else {
+            // Case 3: no reaction → create LIKE
+            PostReaction reaction = PostReaction.builder()
+                    .userId(currentUserId)
+                    .postId(post.getId())
+                    .reactionType(ReactionType.LIKE)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            postReactionRepository.save(reaction);
+            post.setLikeCount(post.getLikeCount() + 1);
+        }
+
+        Post updatedPost = postRepository.save(post);
+        return postMapper.toCreationPostResponse(updatedPost);
+    }
+
+
+    @Transactional
+    public PostResponse dislikePost(String postId) {
+
+        String currentUserId = profileUtil.getCurrentUserId();
+
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new AppException(ErrorCode.POST_NOT_EXISTED));
+
+        Optional<PostReaction> existingReaction =
+                postReactionRepository.findByUserIdAndPostId(currentUserId, postId);
+
+        if (existingReaction.isPresent()) {
+            PostReaction reaction = existingReaction.get();
+
+            // Case 1: already disliked → remove dislike
+            if (reaction.getReactionType() == ReactionType.DISLIKE) {
+                postReactionRepository.delete(reaction);
+                post.setDislikeCount(post.getDislikeCount() - 1);
+            }
+            // Case 2: was LIKE → change to DISLIKE
+            else {
+                reaction.setReactionType(ReactionType.DISLIKE);
+                reaction.setCreatedAt(LocalDateTime.now());
+                postReactionRepository.save(reaction);
+
+                post.setLikeCount(post.getLikeCount() - 1);
+                post.setDislikeCount(post.getDislikeCount() + 1);
+            }
+
+        } else {
+            // Case 3: no reaction → create DISLIKE
+            PostReaction reaction = PostReaction.builder()
+                    .userId(currentUserId)
+                    .postId(post.getId())
+                    .reactionType(ReactionType.DISLIKE)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            postReactionRepository.save(reaction);
+
+            post.setDislikeCount(post.getDislikeCount() + 1);
+        }
+
+        Post updatedPost = postRepository.save(post);
+        return postMapper.toCreationPostResponse(updatedPost);
+    }
+
+
+
+
     private boolean isPostOwner(String ownerId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getName();
@@ -133,4 +235,11 @@ public class PostService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
+    public PostResponse getPostById(String id) {
+        Post post = postRepository.findById(id)
+                .orElseThrow(() -> new  AppException(ErrorCode.POST_NOT_EXISTED));
+
+        return postMapper.toCreationPostResponse(post);
+    }
 }

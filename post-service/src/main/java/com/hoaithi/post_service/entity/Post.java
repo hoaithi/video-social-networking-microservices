@@ -18,11 +18,18 @@ public class Post {
     @Id
     String id;
     String profileId;
+    String profileImage;
+    String profileName;
     String content;
     String title;
     String imageUrl;
     @Builder.Default
     Instant createdAt = Instant.now();
     @Builder.Default
-    Long heartCount = 0L;
+    Long likeCount = 0L;
+    @Builder.Default
+    Long dislikeCount = 0L;;
+    @Builder.Default
+    Long commentCount = 0L;
+
 }

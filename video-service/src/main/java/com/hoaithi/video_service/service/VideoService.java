@@ -364,24 +364,57 @@ public class VideoService {
     SubClient subClient;
     KafkaTemplate<String, Object> kafkaTemplate;
 
-    public PagedResponse<VideoResponse> getVideos(int page, int size){
-        log.info("=== Getting Videos - Page: {}, Size: {} ===", page, size);
+    public PagedResponse<VideoResponse> searchVideos(
+            String keyword,
+            Boolean isPremium,
+            int page,
+            int size,
+            String sortBy,
+            String sortDir
+    ) {
+        log.info("=== Searching Videos - Keyword: {}, isPremium: {}, Page: {}, Size: {} ===",
+                keyword, isPremium, page, size);
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("publishedAt").descending());
-        Page<Video> videos = videoRepository.findAll(pageable);
+        // Tạo Sort object
+        Sort.Direction direction = sortDir.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
 
-        log.info("Found {} videos for page {}", videos.getContent().size(), page);
+        // Tìm kiếm videos với các điều kiện
+        Page<Video> videos;
 
+        if (keyword != null && !keyword.trim().isEmpty() && isPremium != null) {
+            // Cả keyword và isPremium
+            videos = videoRepository.findByTitleContainingIgnoreCaseAndIsPremium(keyword, isPremium, pageable);
+        } else if (keyword != null && !keyword.trim().isEmpty()) {
+            // Chỉ có keyword
+            videos = videoRepository.findByTitleContainingIgnoreCase(keyword, pageable);
+        } else if (isPremium != null) {
+            // Chỉ có isPremium
+            videos = videoRepository.findByIsPremium(isPremium, pageable);
+        } else {
+            // Không có filter nào
+            videos = videoRepository.findAll(pageable);
+        }
+
+        log.info("Found {} videos matching criteria", videos.getContent().size());
+
+        // Map sang VideoResponse và thêm thông tin profile
         Page<VideoResponse> responses = videos.map(video -> {
             VideoResponse videoResponse = videoMapper.toVideoResponse(video);
             videoResponse.setPremium(video.isPremium());
-            ProfileResponse profileResponse = profileClient.getProfileById(videoResponse.getProfileId()).getResult();
-            videoResponse.setProfileImage(profileResponse.getAvatarUrl());
-            videoResponse.setProfileName(profileResponse.getFullName());
+
+            try {
+                ProfileResponse profileResponse = profileClient.getProfileById(videoResponse.getProfileId()).getResult();
+                videoResponse.setProfileImage(profileResponse.getAvatarUrl());
+                videoResponse.setProfileName(profileResponse.getFullName());
+            } catch (Exception e) {
+                log.error("Error fetching profile for video {}: {}", video.getId(), e.getMessage());
+            }
+
             return videoResponse;
         });
 
-        log.info("=== Videos Retrieved Successfully ===");
+        log.info("=== Videos Search Completed Successfully ===");
 
         return PagedResponse.<VideoResponse>builder()
                 .content(responses.getContent())

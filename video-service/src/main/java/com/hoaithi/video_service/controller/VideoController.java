@@ -42,16 +42,27 @@ public class VideoController {
     }
 
     @GetMapping("/search")
-    public ApiResponse<PagedResponse<VideoResponse>> getVideos(
+    public ApiResponse<PagedResponse<VideoResponse>> searchVideos(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(defaultValue = "publishedAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Boolean isPremium
     ) {
-
         return ApiResponse.<PagedResponse<VideoResponse>>builder()
-                .result(videoService.getVideos(page, size))
-                .message("Retrieve list of video successfully")
+                .result(videoService.searchVideos(
+                        keyword,
+                        isPremium,
+                        page,
+                        size,
+                        sortBy,
+                        sortDir
+                ))
+                .message("Search videos successfully")
                 .build();
     }
+
 
     @GetMapping("/watch/{id}")
     public ApiResponse<VideoResponse> getVideoById(@PathVariable("id") String id) {
