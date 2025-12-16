@@ -25,6 +25,6 @@ public interface ProfileClient {
     @GetMapping("/subscription/{channelId}/count")
     ApiResponse<Long> getSubscriberCount(@PathVariable("channelId") String channelId);
 
-    @GetMapping("/count/total")
+    @GetMapping("/profile/count/total")
     ApiResponse<Long> getTotalUserCount();
 }

@@ -3,10 +3,9 @@ package com.hoaithi.profile_service.controller;
 
 import com.hoaithi.profile_service.dto.request.MembershipTierCreateRequest;
 import com.hoaithi.profile_service.dto.request.MembershipTierUpdateRequest;
-import com.hoaithi.profile_service.dto.response.ApiResponse;
-import com.hoaithi.profile_service.dto.response.MembershipDTO;
-import com.hoaithi.profile_service.dto.response.MembershipTierDTO;
+import com.hoaithi.profile_service.dto.response.*;
 import com.hoaithi.profile_service.service.MembershipService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -123,4 +122,39 @@ public class MembershipController {
                 .result(hasMembership)
                 .build());
     }
+
+
+    @GetMapping("/stats/channel/{profileId}")
+    @Operation(
+            summary = "Get channel membership statistics",
+            description = "Get statistics about membership tiers and subscribers for a channel"
+    )
+    public ResponseEntity<ApiResponse<MembershipStatsDTO>> getChannelMembershipStats(
+            @PathVariable String profileId) {
+
+        MembershipStatsDTO stats = membershipService.getChannelMembershipStats(profileId);
+
+        return ResponseEntity.ok(ApiResponse.<MembershipStatsDTO>builder()
+                .message("Channel membership statistics retrieved successfully")
+                .result(stats)
+                .build());
+    }
+
+    @GetMapping("/stats/monthly/{profileId}")
+    @Operation(
+            summary = "Get monthly statistics for channel",
+            description = "Get revenue and member growth statistics grouped by month"
+    )
+    public ResponseEntity<ApiResponse<MembershipMonthlyStatsResponse>> getMonthlyStats(
+            @PathVariable String profileId,
+            @RequestParam(required = false, defaultValue = "6") Integer months) {
+
+        MembershipMonthlyStatsResponse stats = membershipService.getMonthlyStatsByChannelId(profileId, months);
+
+        return ResponseEntity.ok(ApiResponse.<MembershipMonthlyStatsResponse>builder()
+                .message("Monthly statistics retrieved successfully")
+                .result(stats)
+                .build());
+    }
+
 }

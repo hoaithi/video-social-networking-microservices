@@ -342,10 +342,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -364,6 +363,7 @@ public class VideoService {
     SubClient subClient;
     KafkaTemplate<String, Object> kafkaTemplate;
 
+    private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("MMM yyyy");
     public PagedResponse<VideoResponse> searchVideos(
             String keyword,
             Boolean isPremium,
@@ -1057,6 +1057,225 @@ public class VideoService {
                 .hearted(false)
                 .engagementScore(engagementScore)
                 .isPremium(video.isPremium())
+                .build();
+    }
+
+
+
+    public VideoMonthlyStatsResponse getMonthlyStatsByProfileId(String profileId, Integer months) {
+        log.info("=== Getting Monthly Video Stats for Profile: {} (Last {} months) ===", profileId, months);
+
+        if (months == null || months <= 0) {
+            months = 6;
+        }
+
+        // Calculate date range
+        LocalDateTime endDate = LocalDateTime.now();
+        LocalDateTime startDate = endDate.minusMonths(months);
+
+        // Get video date range
+        LocalDateTime firstVideoDate = startDate;
+        LocalDateTime lastVideoDate = endDate;
+
+        try {
+            Object[] dateRange = videoRepository.getVideoDateRange(profileId);
+            if (dateRange != null && dateRange.length >= 2) {
+                if (dateRange[0] != null) {
+                    firstVideoDate = (LocalDateTime) dateRange[0];
+                }
+                if (dateRange[1] != null) {
+                    lastVideoDate = (LocalDateTime) dateRange[1];
+                }
+            }
+            log.info("Video date range: {} to {}", firstVideoDate, lastVideoDate);
+        } catch (Exception e) {
+            log.warn("Error getting video date range: {}", e.getMessage());
+        }
+
+        // Initialize map for monthly stats
+        Map<String, MonthlyVideoStatsDTO> monthlyStatsMap = new HashMap<>();
+
+        // Step 1: Get monthly video uploads
+        try {
+            List<Object[]> videoUploadData = videoRepository.getMonthlyVideoUploadsByProfileId(profileId);
+            if (videoUploadData != null && !videoUploadData.isEmpty()) {
+                log.info("Found {} months of video upload data", videoUploadData.size());
+
+                for (Object[] row : videoUploadData) {
+                    try {
+                        Integer year = row[0] != null ? (Integer) row[0] : null;
+                        Integer month = row[1] != null ? (Integer) row[1] : null;
+                        Long videoCount = row[2] != null ? ((Number) row[2]).longValue() : 0L;
+
+                        if (year != null && month != null) {
+                            String monthKey = String.format("%d-%02d", year, month);
+                            YearMonth yearMonth = YearMonth.of(year, month);
+
+                            MonthlyVideoStatsDTO stats = MonthlyVideoStatsDTO.builder()
+                                    .month(yearMonth.format(MONTH_FORMATTER))
+                                    .year(year)
+                                    .monthNumber(month)
+                                    .newVideos(videoCount)
+                                    .totalVideos(0L)
+                                    .newViews(0L)
+                                    .totalViews(0L)
+                                    .newLikes(0L)
+                                    .totalLikes(0L)
+                                    .newComments(0L)
+                                    .totalComments(0L)
+                                    .averageEngagementRate(0.0)
+                                    .newSubscribers(0L)
+                                    .build();
+
+                            monthlyStatsMap.put(monthKey, stats);
+                        }
+                    } catch (Exception e) {
+                        log.error("Error processing video upload row: {}", e.getMessage());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error getting monthly video uploads: {}", e.getMessage());
+        }
+
+        // Step 2: Get monthly engagement stats
+        try {
+            List<Object[]> engagementData = videoRepository.getMonthlyEngagementByProfileId(profileId);
+            if (engagementData != null && !engagementData.isEmpty()) {
+                log.info("Found {} months of engagement data", engagementData.size());
+
+                for (Object[] row : engagementData) {
+                    try {
+                        Integer year = row[0] != null ? (Integer) row[0] : null;
+                        Integer month = row[1] != null ? (Integer) row[1] : null;
+                        Long views = row[2] != null ? ((Number) row[2]).longValue() : 0L;
+                        Long likes = row[3] != null ? ((Number) row[3]).longValue() : 0L;
+                        Long dislikes = row[4] != null ? ((Number) row[4]).longValue() : 0L;
+                        Long comments = row[5] != null ? ((Number) row[5]).longValue() : 0L;
+
+                        if (year != null && month != null) {
+                            String monthKey = String.format("%d-%02d", year, month);
+                            YearMonth yearMonth = YearMonth.of(year, month);
+
+                            MonthlyVideoStatsDTO stats = monthlyStatsMap.get(monthKey);
+                            if (stats != null) {
+                                stats.setNewViews(views);
+                                stats.setNewLikes(likes);
+                                stats.setNewComments(comments);
+                            } else {
+                                stats = MonthlyVideoStatsDTO.builder()
+                                        .month(yearMonth.format(MONTH_FORMATTER))
+                                        .year(year)
+                                        .monthNumber(month)
+                                        .newVideos(0L)
+                                        .newViews(views)
+                                        .newLikes(likes)
+                                        .newComments(comments)
+                                        .build();
+                                monthlyStatsMap.put(monthKey, stats);
+                            }
+
+                            // Calculate engagement rate
+                            if (views > 0) {
+                                double engagementRate = ((likes + comments) * 100.0) / views;
+                                stats.setAverageEngagementRate(Math.round(engagementRate * 100.0) / 100.0);
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.error("Error processing engagement row: {}", e.getMessage());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error getting monthly engagement: {}", e.getMessage());
+        }
+
+        // Step 3: Fill in missing months and calculate cumulative values
+        List<MonthlyVideoStatsDTO> completeMonthlyData = new ArrayList<>();
+        YearMonth currentYearMonth = YearMonth.from(startDate);
+        YearMonth endYearMonth = YearMonth.from(endDate);
+
+        Long cumulativeVideos = 0L;
+        Long cumulativeViews = 0L;
+        Long cumulativeLikes = 0L;
+        Long cumulativeComments = 0L;
+
+        while (!currentYearMonth.isAfter(endYearMonth)) {
+            String monthKey = String.format("%d-%02d",
+                    currentYearMonth.getYear(),
+                    currentYearMonth.getMonthValue());
+
+            MonthlyVideoStatsDTO stats = monthlyStatsMap.get(monthKey);
+
+            if (stats == null) {
+                stats = MonthlyVideoStatsDTO.builder()
+                        .month(currentYearMonth.format(MONTH_FORMATTER))
+                        .year(currentYearMonth.getYear())
+                        .monthNumber(currentYearMonth.getMonthValue())
+                        .newVideos(0L)
+                        .newViews(0L)
+                        .newLikes(0L)
+                        .newComments(0L)
+                        .averageEngagementRate(0.0)
+                        .newSubscribers(0L)
+                        .build();
+            }
+
+            // Calculate cumulative values
+            cumulativeVideos += stats.getNewVideos() != null ? stats.getNewVideos() : 0L;
+            cumulativeViews += stats.getNewViews() != null ? stats.getNewViews() : 0L;
+            cumulativeLikes += stats.getNewLikes() != null ? stats.getNewLikes() : 0L;
+            cumulativeComments += stats.getNewComments() != null ? stats.getNewComments() : 0L;
+
+            stats.setTotalVideos(cumulativeVideos);
+            stats.setTotalViews(cumulativeViews);
+            stats.setTotalLikes(cumulativeLikes);
+            stats.setTotalComments(cumulativeComments);
+
+            completeMonthlyData.add(stats);
+            currentYearMonth = currentYearMonth.plusMonths(1);
+        }
+
+        // Step 4: Get overall stats and subscriber count
+        Stats overallStats = calculateOverallStats(profileId);
+        Long subscriberCount = 0L;
+        try {
+            subscriberCount = subClient.getSubscriberCount(profileId).getResult();
+            log.info("Subscriber count: {}", subscriberCount);
+        } catch (Exception e) {
+            log.error("Error getting subscriber count: {}", e.getMessage());
+        }
+
+        log.info("Generated {} months of data, total videos: {}, total views: {}",
+                completeMonthlyData.size(), cumulativeVideos, cumulativeViews);
+
+        return VideoMonthlyStatsResponse.builder()
+                .monthlyData(completeMonthlyData)
+                .overallStats(overallStats)
+                .totalSubscribers(subscriberCount)
+                .totalMonths(completeMonthlyData.size())
+                .startDate(firstVideoDate.format(DateTimeFormatter.ISO_LOCAL_DATE))
+                .endDate(lastVideoDate.format(DateTimeFormatter.ISO_LOCAL_DATE))
+                .build();
+    }
+
+    /**
+     * Calculate overall stats (reuse existing logic)
+     */
+    private Stats calculateOverallStats(String profileId) {
+        List<Video> videos = videoRepository.findAllByProfileId(profileId);
+
+        long totalViews = videos.stream().mapToLong(Video::getViewCount).sum();
+        long totalLikes = videos.stream().mapToLong(Video::getLikeCount).sum();
+        long totalDislikes = videos.stream().mapToLong(Video::getDislikeCount).sum();
+        long totalComments = videos.stream().mapToLong(Video::getCommentCount).sum();
+
+        return Stats.builder()
+                .totalViews(totalViews)
+                .totalLikes(totalLikes)
+                .totalDislikes(totalDislikes)
+                .totalComments(totalComments)
+                .totalVideos((long) videos.size())
                 .build();
     }
 }
