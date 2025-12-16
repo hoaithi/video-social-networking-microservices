@@ -3,6 +3,7 @@ package com.hoaithi.video_service.controller;
 import com.hoaithi.video_service.dto.request.VideoCreationRequest;
 import com.hoaithi.video_service.dto.response.*;
 import com.hoaithi.video_service.service.VideoService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -162,6 +163,26 @@ public class VideoController {
         return ApiResponse.<PagedResponse<VideoResponse>>builder()
                 .result(videos)
                 .message("All videos retrieved successfully")
+                .build();
+    }
+
+
+    @GetMapping("/monthly/{profileId}")
+    @Operation(
+            summary = "Get monthly video statistics",
+            description = "Get video uploads and engagement statistics grouped by month"
+    )
+    public ApiResponse<VideoMonthlyStatsResponse> getMonthlyStats(
+            @PathVariable String profileId,
+            @RequestParam(required = false, defaultValue = "6") Integer months) {
+
+        log.info("=== Getting Monthly Stats for Profile: {} (Last {} months) ===", profileId, months);
+
+        VideoMonthlyStatsResponse response = videoService.getMonthlyStatsByProfileId(profileId, months);
+
+        return ApiResponse.<VideoMonthlyStatsResponse>builder()
+                .message("Monthly video statistics retrieved successfully")
+                .result(response)
                 .build();
     }
 

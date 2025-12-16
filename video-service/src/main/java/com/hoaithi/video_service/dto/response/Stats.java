@@ -15,4 +15,7 @@ public class Stats {
     private Long totalDislikes;
     private Long totalComments;
     private Long totalVideos;
+
+    Long totalUsers;
+    Long activeUsers;
 }
