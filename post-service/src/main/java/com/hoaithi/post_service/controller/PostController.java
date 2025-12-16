@@ -11,6 +11,8 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -54,7 +56,7 @@ public class PostController {
     }
 
 
-    @GetMapping("/{userId}")
+    @GetMapping("/user/{userId}")
     public ApiResponse<?> getPostByUserId(@PathVariable String userId,
                                           @RequestParam(defaultValue = "0") int page,
                                           @RequestParam(defaultValue = "10") int size) {
@@ -63,6 +65,17 @@ public class PostController {
                 .result(postService.getPostByProfileId(userId, page, size))
                 .build();
     }
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<?>> getPostById(@PathVariable String id) {
+        PostResponse post = postService.getPostById(id);
+
+        return ResponseEntity.ok(ApiResponse.<PostResponse>builder()
+                .message("Post retrieved successfully")
+                .result(post)
+                .build());
+    }
+
+
 
     @PutMapping("/{postId}")
     public ApiResponse<PostResponse> updatePost(
@@ -84,6 +97,34 @@ public class PostController {
                 .result(null)
                 .build();
     }
+
+    @PostMapping("/{id}/like")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<PostResponse>> likePost(
+            @PathVariable String id) {
+
+        PostResponse post = postService.likePost(id);
+
+        return ResponseEntity.ok(ApiResponse.<PostResponse>builder()
+                .message("Post liked successfully")
+                .result(post)
+                .build());
+    }
+
+    @PostMapping("/{id}/dislike")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<PostResponse>> dislikePost(
+            @PathVariable String id) {
+
+        PostResponse post = postService.dislikePost(id);
+
+        return ResponseEntity.ok(ApiResponse.<PostResponse>builder()
+                .message("Post disliked successfully")
+                .result(post)
+                .build());
+    }
+
+
 
 
 }

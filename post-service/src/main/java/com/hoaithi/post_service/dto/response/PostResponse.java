@@ -19,6 +19,8 @@ public class PostResponse {
     String content;
     String title;
     String imageUrl;
-    Long heartCount;
+    Long likeCount;
+    Long dislikeCount;
+    Integer commentCount;
     Instant createdAt;
 }
