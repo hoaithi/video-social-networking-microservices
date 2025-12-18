@@ -14,6 +14,7 @@ import com.hoaithi.profile_service.mapper.ProfileMapper;
 import com.hoaithi.profile_service.repository.ProfileRepository;
 import com.hoaithi.profile_service.repository.SubscriptionRepository;
 import com.hoaithi.profile_service.repository.httpclient.FileClient;
+import com.hoaithi.profile_service.repository.httpclient.VideoClient;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -28,6 +29,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Slf4j
@@ -39,6 +41,7 @@ public class ProfileService {
     ProfileRepository profileRepository;
     ProfileMapper profileMapper;
     FileClient fileClient;
+    VideoClient videoClient;
 
     SubscriptionRepository subscriptionRepository;
 
@@ -158,6 +161,16 @@ public class ProfileService {
                     // Get subscribing count (channels this user follows)
                     Long subscribingCount = subscriptionRepository.countByUserId(profile.getId());
 
+                    // ✅ GET VIDEO COUNT
+                    Long totalVideos = 0L;
+                    try {
+                        totalVideos = videoClient.getVideoCountByProfile(profile.getId()).getResult();
+                        log.info("Profile {}: {} videos", profile.getId(), totalVideos);
+                    } catch (Exception e) {
+                        log.error("Error getting video count for profile {}: {}",
+                                profile.getId(), e.getMessage());
+                    }
+
                     return ProfileDetailResponse.builder()
                             .id(profile.getId())
                             .userId(profile.getUserId())
@@ -171,6 +184,7 @@ public class ProfileService {
                             .hasPassword(profile.isHasPassword())
                             .subscriberCount(subscriberCount)
                             .subscribingCount(subscribingCount)
+                            .totalVideos(totalVideos)
                             .createdAt(profile.getCreatedAt().toString())
                             .build();
                 })
@@ -193,5 +207,22 @@ public class ProfileService {
         Long count = profileRepository.count();
         log.info("Total users: {}", count);
         return count;
+    }
+
+    // Thêm các methods này vào ProfileService.java
+
+    public List<Object[]> getDailyUserRegistrations(LocalDate startDate, LocalDate endDate) {
+        log.info("Getting daily user registrations from {} to {}", startDate, endDate);
+        return profileRepository.getDailyUserRegistrations(startDate, endDate);
+    }
+
+    public List<Object[]> getMonthlyUserRegistrations(LocalDate startDate, LocalDate endDate) {
+        log.info("Getting monthly user registrations from {} to {}", startDate, endDate);
+        return profileRepository.getMonthlyUserRegistrations(startDate, endDate);
+    }
+
+    public Long countUsersInPeriod(LocalDate startDate, LocalDate endDate) {
+        log.info("Counting users in period from {} to {}", startDate, endDate);
+        return profileRepository.countUsersInPeriod(startDate, endDate);
     }
 }

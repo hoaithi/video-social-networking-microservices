@@ -23,4 +23,5 @@ public class ProfileDetailResponse {
     private Long subscriberCount;
     private Long subscribingCount;
     private String createdAt;
+    private Long totalVideos;
 }

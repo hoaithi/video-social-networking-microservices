@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 
@@ -34,4 +36,37 @@ public interface ProfileRepository extends JpaRepository<Profile, String> {
             @Param("email") String email,
             @Param("hasPassword") Boolean hasPassword,
             Pageable pageable);
+
+    // Get daily user registrations
+    @Query("SELECT p.createdAt as date, COUNT(p) as newUsers " +
+            "FROM profiles p " +
+            "WHERE p.createdAt BETWEEN :startDate AND :endDate " +
+            "GROUP BY p.createdAt " +
+            "ORDER BY p.createdAt")
+    List<Object[]> getDailyUserRegistrations(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    // Get monthly user registrations
+    @Query("SELECT YEAR(p.createdAt) as year, MONTH(p.createdAt) as month, " +
+            "COUNT(p) as newUsers " +
+            "FROM profiles p " +
+            "WHERE p.createdAt BETWEEN :startDate AND :endDate " +
+            "GROUP BY YEAR(p.createdAt), MONTH(p.createdAt) " +
+            "ORDER BY YEAR(p.createdAt), MONTH(p.createdAt)")
+    List<Object[]> getMonthlyUserRegistrations(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    // Get total users for a period
+    @Query("SELECT COUNT(p) FROM profiles p " +
+            "WHERE p.createdAt BETWEEN :startDate AND :endDate")
+    Long countUsersInPeriod(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    // Get users created before a specific date
+    @Query("SELECT COUNT(p) FROM profiles p " +
+            "WHERE p.createdAt <= :endDate")
+    Long countUsersUpToDate(@Param("endDate") LocalDate endDate);
 }

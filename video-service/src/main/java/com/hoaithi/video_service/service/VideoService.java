@@ -341,6 +341,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -1277,5 +1278,354 @@ public class VideoService {
                 .totalComments(totalComments)
                 .totalVideos((long) videos.size())
                 .build();
+    }
+
+    // Thêm method này vào VideoService.java
+
+    public GrowthDataResponse getGrowthData(
+            String timeRange,
+            String comparisonType,
+            String customStartDate,
+            String customEndDate) {
+
+        log.info("=== Calculating Growth Data - TimeRange: {}, Comparison: {} ===",
+                timeRange, comparisonType);
+
+        // Calculate date ranges
+        LocalDateTime currentEnd = LocalDateTime.now();
+        LocalDateTime currentStart;
+        LocalDateTime comparisonStart;
+        LocalDateTime comparisonEnd;
+
+        switch (timeRange.toLowerCase()) {
+            case "week":
+                currentStart = currentEnd.minusDays(7);
+                comparisonStart = currentStart.minusDays(7);
+                comparisonEnd = currentStart;
+                break;
+            case "month":
+                currentStart = currentEnd.minusDays(30);
+                comparisonStart = currentStart.minusDays(30);
+                comparisonEnd = currentStart;
+                break;
+            case "year":
+                currentStart = currentEnd.minusMonths(12);
+                comparisonStart = currentStart.minusMonths(12);
+                comparisonEnd = currentStart;
+                break;
+            case "custom":
+                if (customStartDate != null && customEndDate != null) {
+                    currentStart = LocalDate.parse(customStartDate).atStartOfDay();
+                    currentEnd = LocalDate.parse(customEndDate).atTime(23, 59, 59);
+                    long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(
+                            currentStart, currentEnd);
+                    comparisonStart = currentStart.minusDays(daysBetween);
+                    comparisonEnd = currentStart;
+                } else {
+                    currentStart = currentEnd.minusDays(30);
+                    comparisonStart = currentStart.minusDays(30);
+                    comparisonEnd = currentStart;
+                }
+                break;
+            default:
+                currentStart = currentEnd.minusDays(7);
+                comparisonStart = currentStart.minusDays(7);
+                comparisonEnd = currentStart;
+        }
+
+        log.info("Current period: {} to {}", currentStart, currentEnd);
+        log.info("Comparison period: {} to {}", comparisonStart, comparisonEnd);
+
+        // Get current period data
+        List<GrowthDataPoint> currentPeriodData = getGrowthDataPoints(
+                currentStart, currentEnd, timeRange);
+
+        // Get comparison period data
+        List<GrowthDataPoint> comparisonPeriodData = getGrowthDataPoints(
+                comparisonStart, comparisonEnd, timeRange);
+
+        // Calculate summary
+        GrowthSummary summary = calculateGrowthSummary(
+                currentPeriodData, comparisonPeriodData,
+                currentStart, currentEnd, comparisonStart, comparisonEnd);
+
+        return GrowthDataResponse.builder()
+                .currentPeriod(currentPeriodData)
+                .comparisonPeriod(comparisonPeriodData)
+                .summary(summary)
+                .timeRange(timeRange)
+                .comparisonType(comparisonType)
+                .build();
+    }
+
+    private List<GrowthDataPoint> getGrowthDataPoints(
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            String timeRange) {
+
+        List<GrowthDataPoint> dataPoints = new ArrayList<>();
+        DateTimeFormatter formatter;
+
+        if (timeRange.equals("week")) {
+            // Daily data for week view
+            formatter = DateTimeFormatter.ofPattern("EEE"); // Mon, Tue, Wed
+            List<Object[]> videoStats = videoRepository.getDailyStats(startDate, endDate);
+
+            LocalDate startLocalDate = startDate.toLocalDate();
+            LocalDate endLocalDate = endDate.toLocalDate();
+            List<Object[]> userStats = profileClient.getDailyUserRegistrations(
+                    startLocalDate, endLocalDate).getResult();
+
+            // Create map for video stats
+            Map<LocalDate, Object[]> videoStatsMap = videoStats.stream()
+                    .collect(Collectors.toMap(
+                            row -> ((java.sql.Date) row[0]).toLocalDate(),
+                            row -> row
+                    ));
+
+            // Create map for user stats - FIX HERE
+            Map<LocalDate, Object[]> userStatsMap = new HashMap<>();
+            if (userStats != null) {
+                for (Object[] row : userStats) {
+                    LocalDate date;
+                    if (row[0] instanceof LocalDate) {
+                        date = (LocalDate) row[0];
+                    } else if (row[0] instanceof java.sql.Date) {
+                        date = ((java.sql.Date) row[0]).toLocalDate();
+                    } else if (row[0] instanceof String) {
+                        date = LocalDate.parse((String) row[0]);
+                    } else {
+                        continue; // Skip invalid data
+                    }
+                    userStatsMap.put(date, row);
+                }
+            }
+
+            // Fill in all days
+            LocalDate current = startLocalDate;
+            while (!current.isAfter(endLocalDate)) {
+                Object[] vStats = videoStatsMap.get(current);
+                Object[] uStats = userStatsMap.get(current);
+
+                Long newVideos = vStats != null ? ((Number) vStats[1]).longValue() : 0L;
+                Long totalViews = vStats != null ? ((Number) vStats[2]).longValue() : 0L;
+                Long totalLikes = vStats != null ? ((Number) vStats[3]).longValue() : 0L;
+                Long totalComments = vStats != null ? ((Number) vStats[4]).longValue() : 0L;
+                Long newUsers = uStats != null ? ((Number) uStats[1]).longValue() : 0L;
+
+                dataPoints.add(GrowthDataPoint.builder()
+                        .period(current.format(formatter))
+                        .date(current.toString())
+                        .newUsers(newUsers)
+                        .activeUsers(newUsers)
+                        .newVideos(newVideos)
+                        .totalViews(totalViews)
+                        .totalLikes(totalLikes)
+                        .totalComments(totalComments)
+                        .engagementRate(calculateEngagementRate(totalViews, totalLikes, totalComments))
+                        .build());
+
+                current = current.plusDays(1);
+            }
+
+        } else if (timeRange.equals("month")) {
+            // Daily data for month view
+            formatter = DateTimeFormatter.ofPattern("MMM dd");
+            List<Object[]> videoStats = videoRepository.getDailyStats(startDate, endDate);
+
+            LocalDate startLocalDate = startDate.toLocalDate();
+            LocalDate endLocalDate = endDate.toLocalDate();
+            List<Object[]> userStats = profileClient.getDailyUserRegistrations(
+                    startLocalDate, endLocalDate).getResult();
+
+            Map<LocalDate, Object[]> videoStatsMap = videoStats.stream()
+                    .collect(Collectors.toMap(
+                            row -> ((java.sql.Date) row[0]).toLocalDate(),
+                            row -> row
+                    ));
+
+            // FIX HERE - same as above
+            Map<LocalDate, Object[]> userStatsMap = new HashMap<>();
+            if (userStats != null) {
+                for (Object[] row : userStats) {
+                    LocalDate date;
+                    if (row[0] instanceof LocalDate) {
+                        date = (LocalDate) row[0];
+                    } else if (row[0] instanceof java.sql.Date) {
+                        date = ((java.sql.Date) row[0]).toLocalDate();
+                    } else if (row[0] instanceof String) {
+                        date = LocalDate.parse((String) row[0]);
+                    } else {
+                        continue;
+                    }
+                    userStatsMap.put(date, row);
+                }
+            }
+
+            LocalDate current = startLocalDate;
+            while (!current.isAfter(endLocalDate)) {
+                Object[] vStats = videoStatsMap.get(current);
+                Object[] uStats = userStatsMap.get(current);
+
+                Long newVideos = vStats != null ? ((Number) vStats[1]).longValue() : 0L;
+                Long totalViews = vStats != null ? ((Number) vStats[2]).longValue() : 0L;
+                Long totalLikes = vStats != null ? ((Number) vStats[3]).longValue() : 0L;
+                Long totalComments = vStats != null ? ((Number) vStats[4]).longValue() : 0L;
+                Long newUsers = uStats != null ? ((Number) uStats[1]).longValue() : 0L;
+
+                dataPoints.add(GrowthDataPoint.builder()
+                        .period(current.format(formatter))
+                        .date(current.toString())
+                        .newUsers(newUsers)
+                        .activeUsers(newUsers)
+                        .newVideos(newVideos)
+                        .totalViews(totalViews)
+                        .totalLikes(totalLikes)
+                        .totalComments(totalComments)
+                        .engagementRate(calculateEngagementRate(totalViews, totalLikes, totalComments))
+                        .build());
+
+                current = current.plusDays(1);
+            }
+
+        } else { // year or custom
+            // Monthly data
+            formatter = DateTimeFormatter.ofPattern("MMM yyyy");
+            List<Object[]> videoStats = videoRepository.getMonthlyStats(startDate, endDate);
+
+            LocalDate startLocalDate = startDate.toLocalDate();
+            LocalDate endLocalDate = endDate.toLocalDate();
+            List<Object[]> userStats = profileClient.getMonthlyUserRegistrations(
+                    startLocalDate, endLocalDate).getResult();
+
+            Map<String, Object[]> videoStatsMap = videoStats.stream()
+                    .collect(Collectors.toMap(
+                            row -> row[0] + "-" + String.format("%02d", row[1]),
+                            row -> row
+                    ));
+
+            // FIX HERE - for monthly data
+            Map<String, Object[]> userStatsMap = new HashMap<>();
+            if (userStats != null) {
+                for (Object[] row : userStats) {
+                    String key;
+                    // row[0] = year, row[1] = month
+                    if (row[0] instanceof Number && row[1] instanceof Number) {
+                        key = row[0] + "-" + String.format("%02d", ((Number) row[1]).intValue());
+                    } else {
+                        continue;
+                    }
+                    userStatsMap.put(key, row);
+                }
+            }
+
+            YearMonth current = YearMonth.from(startDate);
+            YearMonth end = YearMonth.from(endDate);
+
+            while (!current.isAfter(end)) {
+                String key = current.getYear() + "-" + String.format("%02d", current.getMonthValue());
+                Object[] vStats = videoStatsMap.get(key);
+                Object[] uStats = userStatsMap.get(key);
+
+                Long newVideos = vStats != null ? ((Number) vStats[2]).longValue() : 0L;
+                Long totalViews = vStats != null ? ((Number) vStats[3]).longValue() : 0L;
+                Long totalLikes = vStats != null ? ((Number) vStats[4]).longValue() : 0L;
+                Long totalComments = vStats != null ? ((Number) vStats[5]).longValue() : 0L;
+                Long newUsers = uStats != null ? ((Number) uStats[2]).longValue() : 0L;
+
+                dataPoints.add(GrowthDataPoint.builder()
+                        .period(current.format(formatter))
+                        .date(current.atDay(1).toString())
+                        .newUsers(newUsers)
+                        .activeUsers(newUsers)
+                        .newVideos(newVideos)
+                        .totalViews(totalViews)
+                        .totalLikes(totalLikes)
+                        .totalComments(totalComments)
+                        .engagementRate(calculateEngagementRate(totalViews, totalLikes, totalComments))
+                        .build());
+
+                current = current.plusMonths(1);
+            }
+        }
+
+        return dataPoints;
+    }
+
+    private GrowthSummary calculateGrowthSummary(
+            List<GrowthDataPoint> currentData,
+            List<GrowthDataPoint> comparisonData,
+            LocalDateTime currentStart,
+            LocalDateTime currentEnd,
+            LocalDateTime comparisonStart,
+            LocalDateTime comparisonEnd) {
+
+        // Sum up current period
+        Long totalNewUsers = currentData.stream()
+                .mapToLong(d -> d.getNewUsers() != null ? d.getNewUsers() : 0L).sum();
+        Long totalActiveUsers = currentData.stream()
+                .mapToLong(d -> d.getActiveUsers() != null ? d.getActiveUsers() : 0L).sum();
+        Long totalNewVideos = currentData.stream()
+                .mapToLong(d -> d.getNewVideos() != null ? d.getNewVideos() : 0L).sum();
+        Long totalViews = currentData.stream()
+                .mapToLong(d -> d.getTotalViews() != null ? d.getTotalViews() : 0L).sum();
+        Long totalLikes = currentData.stream()
+                .mapToLong(d -> d.getTotalLikes() != null ? d.getTotalLikes() : 0L).sum();
+        Long totalComments = currentData.stream()
+                .mapToLong(d -> d.getTotalComments() != null ? d.getTotalComments() : 0L).sum();
+
+        // Sum up comparison period
+        Long compNewUsers = comparisonData.stream()
+                .mapToLong(d -> d.getNewUsers() != null ? d.getNewUsers() : 0L).sum();
+        Long compNewVideos = comparisonData.stream()
+                .mapToLong(d -> d.getNewVideos() != null ? d.getNewVideos() : 0L).sum();
+        Long compViews = comparisonData.stream()
+                .mapToLong(d -> d.getTotalViews() != null ? d.getTotalViews() : 0L).sum();
+        Long compEngagement = comparisonData.stream()
+                .mapToLong(d -> (d.getTotalLikes() != null ? d.getTotalLikes() : 0L) +
+                        (d.getTotalComments() != null ? d.getTotalComments() : 0L)).sum();
+
+        Long currentEngagement = totalLikes + totalComments;
+
+        // Calculate growth rates
+        Double userGrowthRate = calculateGrowthRate(totalNewUsers, compNewUsers);
+        Double videoGrowthRate = calculateGrowthRate(totalNewVideos, compNewVideos);
+        Double viewGrowthRate = calculateGrowthRate(totalViews, compViews);
+        Double engagementGrowthRate = calculateGrowthRate(currentEngagement, compEngagement);
+
+        return GrowthSummary.builder()
+                .totalNewUsers(totalNewUsers)
+                .totalActiveUsers(totalActiveUsers)
+                .totalNewVideos(totalNewVideos)
+                .totalViews(totalViews)
+                .totalLikes(totalLikes)
+                .totalComments(totalComments)
+                .userGrowthRate(userGrowthRate)
+                .videoGrowthRate(videoGrowthRate)
+                .viewGrowthRate(viewGrowthRate)
+                .engagementGrowthRate(engagementGrowthRate)
+                .startDate(currentStart.toLocalDate().toString())
+                .endDate(currentEnd.toLocalDate().toString())
+                .comparisonStartDate(comparisonStart.toLocalDate().toString())
+                .comparisonEndDate(comparisonEnd.toLocalDate().toString())
+                .build();
+    }
+
+    private Double calculateGrowthRate(Long current, Long previous) {
+        if (previous == null || previous == 0) {
+            return current != null && current > 0 ? 100.0 : 0.0;
+        }
+        if (current == null) {
+            return -100.0;
+        }
+        return ((current - previous) * 100.0) / previous;
+    }
+
+    private Double calculateEngagementRate(Long views, Long likes, Long comments) {
+        if (views == null || views == 0) {
+            return 0.0;
+        }
+        long engagement = (likes != null ? likes : 0L) + (comments != null ? comments : 0L);
+        return Math.round((engagement * 100.0 / views) * 100.0) / 100.0;
     }
 }

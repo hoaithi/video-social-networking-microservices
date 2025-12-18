@@ -75,4 +75,44 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     Long countVideosUpToDate(
             @Param("profileId") String profileId,
             @Param("endDate") LocalDateTime endDate);
+
+    // Get daily stats for a date range (for week view)
+    @Query("SELECT DATE(v.publishedAt) as date, " +
+            "COUNT(v) as newVideos, " +
+            "SUM(v.viewCount) as totalViews, " +
+            "SUM(v.likeCount) as totalLikes, " +
+            "SUM(v.commentCount) as totalComments " +
+            "FROM Video v " +
+            "WHERE v.publishedAt BETWEEN :startDate AND :endDate " +
+            "GROUP BY DATE(v.publishedAt) " +
+            "ORDER BY DATE(v.publishedAt)")
+    List<Object[]> getDailyStats(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+
+    // Get monthly stats for a date range (for month/year view)
+    @Query("SELECT YEAR(v.publishedAt) as year, MONTH(v.publishedAt) as month, " +
+            "COUNT(v) as newVideos, " +
+            "SUM(v.viewCount) as totalViews, " +
+            "SUM(v.likeCount) as totalLikes, " +
+            "SUM(v.commentCount) as totalComments " +
+            "FROM Video v " +
+            "WHERE v.publishedAt BETWEEN :startDate AND :endDate " +
+            "GROUP BY YEAR(v.publishedAt), MONTH(v.publishedAt) " +
+            "ORDER BY YEAR(v.publishedAt), MONTH(v.publishedAt)")
+    List<Object[]> getMonthlyStats(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+
+    // Get total stats for a date range
+    @Query("SELECT COUNT(v) as totalVideos, " +
+            "SUM(v.viewCount) as totalViews, " +
+            "SUM(v.likeCount) as totalLikes, " +
+            "SUM(v.commentCount) as totalComments " +
+            "FROM Video v " +
+            "WHERE v.publishedAt BETWEEN :startDate AND :endDate")
+    Object[] getTotalStatsForPeriod(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+
 }

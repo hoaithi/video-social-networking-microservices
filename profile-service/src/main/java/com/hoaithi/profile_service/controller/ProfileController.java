@@ -147,4 +147,48 @@ public class ProfileController {
                 .build();
     }
 
+    // Thêm các methods này vào ProfileController.java
+
+    @GetMapping("/admin/daily-registrations")
+    public ApiResponse<List<Object[]>> getDailyUserRegistrations(
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate) {
+        log.info("=== Getting Daily User Registrations: {} to {} ===", startDate, endDate);
+
+        List<Object[]> data = profileService.getDailyUserRegistrations(startDate, endDate);
+
+        return ApiResponse.<List<Object[]>>builder()
+                .result(data)
+                .message("Daily user registrations retrieved successfully")
+                .build();
+    }
+
+    @GetMapping("/admin/monthly-registrations")
+    public ApiResponse<List<Object[]>> getMonthlyUserRegistrations(
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate) {
+        log.info("=== Getting Monthly User Registrations: {} to {} ===", startDate, endDate);
+
+        List<Object[]> data = profileService.getMonthlyUserRegistrations(startDate, endDate);
+
+        return ApiResponse.<List<Object[]>>builder()
+                .result(data)
+                .message("Monthly user registrations retrieved successfully")
+                .build();
+    }
+
+    @GetMapping("/admin/count-period")
+    public ApiResponse<Long> countUsersInPeriod(
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate) {
+        log.info("=== Counting Users in Period: {} to {} ===", startDate, endDate);
+
+        Long count = profileService.countUsersInPeriod(startDate, endDate);
+
+        return ApiResponse.<Long>builder()
+                .result(count)
+                .message("User count for period retrieved successfully")
+                .build();
+    }
+
 }
