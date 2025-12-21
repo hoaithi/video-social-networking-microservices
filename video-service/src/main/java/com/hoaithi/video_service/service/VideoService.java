@@ -537,6 +537,7 @@ public class VideoService {
 
     public void deleteVideo(String id) {
         log.info("=== Deleting Video: {} ===", id);
+        SecurityContextHolder.getContext().getAuthentication();
 
         Video video = videoRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));

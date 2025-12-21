@@ -8,12 +8,25 @@ spring:
     host: ${REDIS_HOST:localhost}
     port: ${REDIS_PORT:6379}
     timeout: ${REDIS_TIMEOUT:60000}
+#  datasource:
+#    url: ${DBMS_CONNECTION:jdbc:mysql://localhost:3306/identity_db}
+#    driverClassName: "com.mysql.cj.jdbc.Driver"
+#    username: ${DBMS_USERNAME:root}
+#    password: ${DBMS_PASSWORD:123456}
+#  jpa:
+#    hibernate:
+#      ddl-auto: update
+#    show-sql: true
   datasource:
-    url: ${DBMS_CONNECTION:jdbc:mysql://localhost:3306/identity_db}
-    driverClassName: "com.mysql.cj.jdbc.Driver"
-    username: ${DBMS_USERNAME:root}
+    url: ${DBMS_CONNECTION:jdbc:postgresql://localhost:5432/identity_db}
+    username: ${DBMS_USERNAME:postgres}
     password: ${DBMS_PASSWORD:123456}
+    driver-class-name: org.postgresql.Driver
   jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
     hibernate:
       ddl-auto: update
     show-sql: true
