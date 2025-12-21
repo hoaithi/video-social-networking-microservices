@@ -10,11 +10,9 @@ import java.util.List;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class GrowthDataResponse {
-    List<VideoGrowthStatsDTO> growthData;
-    Stats currentPeriodStats;
-    Stats previousPeriodStats;
-    String timeRange; // "week", "month", "year"
-    String comparisonType; // "previous", "lastYear", "none"
-    String startDate;
-    String endDate;
+    List<GrowthDataPoint> currentPeriod;      // Thay đổi từ growthData
+    List<GrowthDataPoint> comparisonPeriod;   // Thêm mới
+    GrowthSummary summary;                     // Thay đổi từ currentPeriodStats/previousPeriodStats
+    String timeRange;                          // Giữ nguyên
+    String comparisonType;
 }

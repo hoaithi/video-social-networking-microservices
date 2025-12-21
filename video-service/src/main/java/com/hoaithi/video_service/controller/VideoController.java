@@ -2,6 +2,7 @@ package com.hoaithi.video_service.controller;
 
 import com.hoaithi.video_service.dto.request.VideoCreationRequest;
 import com.hoaithi.video_service.dto.response.*;
+import com.hoaithi.video_service.repository.VideoRepository;
 import com.hoaithi.video_service.service.VideoService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class VideoController {
 
     VideoService videoService;
-
+    VideoRepository videoRepository;
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<VideoResponse> createVideo(
             @RequestPart(value = "videoFile", required = false) MultipartFile videoFile,
@@ -117,11 +118,12 @@ public class VideoController {
         videoService.deleteVideo(id);
         return ApiResponse.<Void>builder().build();
     }
+
     @GetMapping("/{videoId}/reaction")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<ApiResponse<VideoUserReaction>> getVideoUserReaction(
             @PathVariable String videoId
-    ){
+    ) {
         VideoUserReaction videoUserReaction = videoService.getUserReaction(videoId);
         return ResponseEntity.ok(ApiResponse.<VideoUserReaction>builder()
                 .message("Video user reaction retrieved successfully")
@@ -197,4 +199,36 @@ public class VideoController {
                 .build();
     }
 
+    @GetMapping("/admin/growth-data")
+    public ApiResponse<GrowthDataResponse> getGrowthData(
+            @RequestParam(defaultValue = "week") String timeRange,
+            @RequestParam(defaultValue = "previous") String comparisonType,
+            @RequestParam(required = false) String customStartDate,
+            @RequestParam(required = false) String customEndDate
+    ) {
+        log.info("=== Admin: Getting Growth Data - TimeRange: {}, Comparison: {} ===",
+                timeRange, comparisonType);
+
+        GrowthDataResponse growthData = videoService.getGrowthData(
+                timeRange, comparisonType, customStartDate, customEndDate);
+
+        log.info("=== Growth Data Retrieved Successfully ===");
+        return ApiResponse.<GrowthDataResponse>builder()
+                .result(growthData)
+                .message("Growth data retrieved successfully")
+                .build();
+    }
+
+    @GetMapping("/count/{profileId}")
+    public ApiResponse<Long> getVideoCountByProfile(@PathVariable String profileId) {
+        log.info("Getting video count for profile: {}", profileId);
+
+        Long count = videoRepository.countByProfileId(profileId);
+
+        return ApiResponse.<Long>builder()
+                .result(count)
+                .message("Video count retrieved successfully")
+                .build();
+    }
 }
+
