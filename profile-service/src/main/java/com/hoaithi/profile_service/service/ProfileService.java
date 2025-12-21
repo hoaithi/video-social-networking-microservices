@@ -225,4 +225,15 @@ public class ProfileService {
         log.info("Counting users in period from {} to {}", startDate, endDate);
         return profileRepository.countUsersInPeriod(startDate, endDate);
     }
+
+    public void deleteProfile(String id) {
+        log.info("=== Deleting Profile with ID: {} ===", id);
+
+        Profile profile = profileRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_EXISTED));
+
+        profileRepository.delete(profile);
+
+        log.info("=== Profile {} deleted successfully ===", id);
+    }
 }

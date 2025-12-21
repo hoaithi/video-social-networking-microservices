@@ -191,4 +191,21 @@ public class ProfileController {
                 .build();
     }
 
+    @DeleteMapping("/{id}")
+    @Operation(
+            summary = "Delete user profile",
+            description = "Permanently delete a user profile by ID"
+    )
+    public ApiResponse<Void> deleteProfile(
+            @Parameter(description = "The unique ID of the user profile to delete")
+            @PathVariable String id) {
+        log.info("=== Admin: Deleting Profile with ID: {} ===", id);
+
+        profileService.deleteProfile(id);
+
+        log.info("=== Profile deleted successfully ===");
+        return ApiResponse.<Void>builder()
+                .message("Profile deleted successfully")
+                .build();
+    }
 }
