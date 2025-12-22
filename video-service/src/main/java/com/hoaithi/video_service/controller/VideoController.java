@@ -88,7 +88,7 @@ public class VideoController {
     }
 
     @PostMapping("/{videoId}/like")
-    @PreAuthorize("hasRole('USER')")
+//    @PreAuthorize("hasRole('USER')")
     public ApiResponse<VideoResponse> likeVideo(
             @PathVariable("videoId") String videoId) {
 
@@ -100,7 +100,7 @@ public class VideoController {
     }
 
     @PostMapping("/{videoId}/dislike")
-    @PreAuthorize("hasRole('USER')")
+//    @PreAuthorize("hasRole('USER')")
     public ApiResponse<VideoResponse> dislikeVideo(
             @PathVariable("videoId") String videoId) {
 
@@ -118,7 +118,7 @@ public class VideoController {
         return ApiResponse.<Void>builder().build();
     }
     @GetMapping("/{videoId}/reaction")
-    @PreAuthorize("hasRole('USER')")
+//    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<ApiResponse<VideoUserReaction>> getVideoUserReaction(
             @PathVariable String videoId
     ){

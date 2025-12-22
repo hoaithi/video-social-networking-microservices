@@ -60,13 +60,26 @@ public class Video {
 
 
     // relationships
-    @OneToMany(mappedBy = "video")
+    @OneToMany(
+            mappedBy = "video",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
     private List<VideoPlaylist> videoPlaylists = new ArrayList<>();
 
-    @OneToMany(mappedBy = "video")
+    @OneToMany(
+            mappedBy = "video",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
     private List<VideoHistory> videoHistories = new ArrayList<>();
 
-    @OneToMany(mappedBy = "video")
+    @OneToMany(
+            mappedBy = "video",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
     private List<VideoReaction> videoReactions = new ArrayList<>();
+
 
 }

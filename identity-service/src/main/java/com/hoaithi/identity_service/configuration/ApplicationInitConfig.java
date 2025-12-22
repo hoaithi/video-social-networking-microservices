@@ -1,6 +1,7 @@
 package com.hoaithi.identity_service.configuration;
 
 
+import com.hoaithi.event.dto.ProfileEvent;
 import com.hoaithi.identity_service.constant.PredefinedRole;
 import com.hoaithi.identity_service.entity.Role;
 import com.hoaithi.identity_service.entity.User;
@@ -12,9 +13,9 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.HashSet;
@@ -33,11 +34,10 @@ public class ApplicationInitConfig {
     @NonFinal
     static final String ADMIN_PASSWORD = "admin";
 
+    KafkaTemplate<String, Object> kafkaTemplate;
+
+
     @Bean
-    @ConditionalOnProperty(
-            prefix = "spring",
-            value = "datasource.driverClassName",
-            havingValue = "com.mysql.cj.jdbc.Driver")
     ApplicationRunner applicationRunner(UserRepository userRepository, RoleRepository roleRepository) {
         log.info("Initializing application.....");
         return args -> {
@@ -62,6 +62,15 @@ public class ApplicationInitConfig {
                         .build();
 
                 userRepository.save(user);
+
+                ProfileEvent event = ProfileEvent.builder()
+                        .userId(user.getId())
+                        .email("admin@gmail.com")
+                        .fullName("Admin")
+                        .hasPassword(true)
+                                .build();
+                kafkaTemplate.send("admin-created-topic1", event);
+
                 log.warn("admin user has been created with default password: admin, please change it");
             }
             log.info("Application initialization completed .....");
