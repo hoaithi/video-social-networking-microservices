@@ -543,10 +543,10 @@ public class VideoService {
         Video video = videoRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
 
-        if(!video.getProfileId().equals(getCurrentUserId())){
-            log.warn("Unauthorized delete attempt by profile: {}", getCurrentUserId());
-            throw new AppException(ErrorCode.UNAUTHORIZED);
-        }
+//        if(!video.getProfileId().equals(getCurrentUserId())){
+//            log.warn("Unauthorized delete attempt by profile: {}", getCurrentUserId());
+//            throw new AppException(ErrorCode.UNAUTHORIZED);
+//        }
 
         videoRepository.delete(video);
         log.info("=== Video Deleted Successfully ===");

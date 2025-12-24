@@ -11,6 +11,7 @@ import com.hoaithi.identity_service.entity.Role;
 import com.hoaithi.identity_service.entity.User;
 import com.hoaithi.identity_service.exception.AppException;
 import com.hoaithi.identity_service.exception.ErrorCode;
+import com.hoaithi.identity_service.mapper.UserMapper;
 import com.hoaithi.identity_service.repository.InvalidatedTokenRepository;
 import com.hoaithi.identity_service.repository.RoleRepository;
 import com.hoaithi.identity_service.repository.UserRepository;
@@ -53,7 +54,7 @@ public class AuthenticationService {
     GoogleClient googleClient;
     GoogleUserInfoClient googleUserInfoClient;
     RoleRepository roleRepository;
-
+    private UserMapper userMapper;
     @NonFinal
     @Value("${jwt.signerKey}")
     protected String signerKey;
@@ -185,11 +186,12 @@ public class AuthenticationService {
         String accessToken = generateAccessToken(user, accessExpiration);
         String refreshToken = generateRefreshToken(user, refreshExpiration);
 
-
+        UserResponse userResponse = userMapper.toUserResponse(user); // Gọn gàng hơn
 
         return AuthenticationResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
+                .user(userResponse)
                 .build();
     }
 
