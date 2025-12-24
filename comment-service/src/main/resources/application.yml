@@ -3,9 +3,19 @@ server:
 spring:
     application:
     name: comment-service
-    data:
-        mongodb:
-            uri: mongodb://root:root@localhost:27017/comment-service?authSource=admin
+    datasource:
+        url: ${DBMS_CONNECTION:jdbc:postgresql://localhost:5432/comment_db}
+        username: ${DBMS_USERNAME:postgres}
+        password: ${DBMS_PASSWORD:123456}
+        driver-class-name: org.postgresql.Driver
+    jpa:
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.PostgreSQLDialect
+                format_sql: true
+        hibernate:
+            ddl-auto: update
+        show-sql: true
 springdoc:
     group-configs:
         - group: comment

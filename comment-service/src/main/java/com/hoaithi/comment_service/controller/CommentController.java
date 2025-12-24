@@ -5,9 +5,14 @@ import com.hoaithi.comment_service.dto.response.ApiResponse;
 import com.hoaithi.comment_service.dto.response.CommentCountResponse;
 import com.hoaithi.comment_service.dto.response.CommentResponse;
 import com.hoaithi.comment_service.service.CommentService;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -67,4 +72,32 @@ public class CommentController {
                 .result(commentService.getCommentCount(itemId))
                 .build();
     }
+    @GetMapping("/{id}/replies")
+    public ResponseEntity<ApiResponse<List<CommentResponse>>> getCommentReplies(@PathVariable String id) {
+        List<CommentResponse> replies = commentService.getRepliesByCommentId(id);
+
+        return ResponseEntity.ok(ApiResponse.<List<CommentResponse>>builder()
+                .message("Replies retrieved successfully")
+                .result(replies)
+                .build());
+    }
+
+    @PostMapping("/{id}/replies")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<CommentResponse>> replyToComment(
+            @PathVariable String id,
+            @Valid @RequestBody CommentRequest request) {
+
+        request.setParentCommentId(id);
+
+        CommentResponse reply = commentService.createComment(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.<CommentResponse>builder()
+                        .message("Reply added successfully")
+                        .result(reply)
+                        .build());
+    }
+
+
 }
