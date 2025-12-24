@@ -3,15 +3,18 @@ package com.hoaithi.comment_service.service;
 import com.hoaithi.comment_service.dto.request.CommentRequest;
 import com.hoaithi.comment_service.dto.response.CommentCountResponse;
 import com.hoaithi.comment_service.dto.response.CommentResponse;
+import com.hoaithi.comment_service.dto.response.OwnerResponse;
 import com.hoaithi.comment_service.dto.response.ProfileResponse;
 import com.hoaithi.comment_service.entity.Comment;
 import com.hoaithi.comment_service.entity.CommentHeart;
 import com.hoaithi.comment_service.entity.Owner;
+import com.hoaithi.comment_service.enums.CommentType;
 import com.hoaithi.comment_service.exception.AppException;
 import com.hoaithi.comment_service.exception.ErrorCode;
 import com.hoaithi.comment_service.mapper.CommentMapper;
 import com.hoaithi.comment_service.repository.CommentHeartRepository;
 import com.hoaithi.comment_service.repository.CommentRepository;
+import com.hoaithi.comment_service.repository.OwnerRepository;
 import com.hoaithi.comment_service.repository.httpclient.PostClient;
 import com.hoaithi.comment_service.repository.httpclient.ProfileClient;
 import com.hoaithi.comment_service.repository.httpclient.VideoClient;
@@ -21,9 +24,11 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -32,18 +37,40 @@ public class CommentService {
     CommentRepository commentRepository;
     CommentHeartRepository commentHeartRepository;
     CommentMapper commentMapper;
+    OwnerRepository ownerRepository;
     ProfileClient profileClient;
     VideoClient videoClient;
     PostClient postClient;
     public CommentResponse createComment(CommentRequest request){
-        ProfileResponse response = profileClient.getMyProfile().getResult();
 
-        Comment comment = commentMapper.toComment(request);
-        comment.setOwner(Owner.builder()
-                        .avatarUrl(response.getAvatarUrl())
-                        .fullName(response.getFullName())
-                        .profileId(response.getId())
-                .build());
+
+        String currentUserId = SecurityContextHolder.getContext().getAuthentication().getName();
+        Comment comment = Comment.builder()
+                .itemId(request.getItemId())
+                .commentType(CommentType.valueOf(request.getCommentType()))
+                .content(request.getContent())
+                .build();
+        Owner owner = ownerRepository.findById(currentUserId)
+                .orElseGet(() -> {
+                    ProfileResponse response =
+                            profileClient.getMyProfile().getResult();
+
+                    Owner newOwner = Owner.builder()
+                            .profileId(response.getId())
+                            .fullName(response.getFullName())
+                            .avatarUrl(response.getAvatarUrl())
+                            .build();
+
+                    return ownerRepository.save(newOwner);
+                });
+
+        owner = ownerRepository.save(owner);
+        comment.setOwner(owner);
+        if(request.getParentCommentId()!=null&&!request.getParentCommentId().isEmpty()){
+            Comment parentComment = commentRepository.findById(request.getParentCommentId())
+                    .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_EXISTED));
+            comment.setParentComment(parentComment);
+        }
         Comment savedComment = commentRepository.save(comment);
         return commentMapper.toCreationCommentResponse(savedComment);
     }
@@ -132,6 +159,45 @@ public class CommentService {
                 .commentCount(commentRepository.countByItemId(itemId))
                 .build();
     }
+    @Transactional(readOnly = true)
+    public List<CommentResponse> getRepliesByCommentId(String commentId) {
+        List<Comment> replies = commentRepository.findByParentCommentIdOrderByCreatedAtAsc(commentId);
+
+        return replies.stream()
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
+    }
+
+    private CommentResponse mapToDto(Comment comment) {
+        String currentUserId =
+                SecurityContextHolder.getContext().getAuthentication().getName();
+
+        boolean isHearted = commentHeartRepository
+                .existsByCommentIdAndProfileId(comment.getId(), currentUserId);
+        OwnerResponse owner = OwnerResponse.builder()
+                .profileId(comment.getOwner().getProfileId())
+                .fullName(comment.getOwner().getFullName())
+                .avatarUrl(comment.getOwner().getAvatarUrl())
+                .build();
+        return CommentResponse.builder()
+                .id(comment.getId())
+                .itemId(comment.getItemId())
+                .parentCommentId(
+                        comment.getParentComment() != null
+                                ? comment.getParentComment().getId()
+                                : null
+                )
+                .commentType(comment.getCommentType().name())
+                .owner(owner)
+                .content(comment.getContent())
+                .hearted(isHearted)
+                .heartCount(comment.getHeartCount())
+                .createdAt(comment.getCreatedAt())
+                .updatedAt(comment.getUpdatedAt())
+                .replies(List.of()) // ⭐ luôn rỗng
+                .build();
+    }
+
 
 
 }
