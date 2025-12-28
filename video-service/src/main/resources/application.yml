@@ -5,8 +5,8 @@ spring:
     name: video-service
   servlet:
     multipart:
-      max-file-size: 5000MB
-      max-request-size: 5000MB
+      max-file-size: 1000MB
+      max-request-size: 1000MB
   datasource:
     url: jdbc:postgresql://localhost:5432/video_db
     username: ${DBMS_USERNAME:postgres}
@@ -31,3 +31,10 @@ springdoc:
       paths-to-match: /video/**
     - group: playlist
       paths-to-match: /playlist/**
+
+aws:
+  s3:
+    bucket-name: profile-image-s3
+    region: ap-southeast-1   # Singapore region
+    access-key: AKIA3WR6QX4QMPHGG3GQ
+    secret-key: 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

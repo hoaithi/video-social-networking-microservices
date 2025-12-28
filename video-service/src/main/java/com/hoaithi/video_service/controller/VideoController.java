@@ -14,6 +14,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -30,7 +32,7 @@ public class VideoController {
             @RequestPart(value = "title", required = false) String title,
             @RequestPart(value = "description", required = false) String description,
             @RequestPart(value = "isPremium", required = false) String isPremium
-    ) {
+    ) throws IOException {
         VideoCreationRequest request = VideoCreationRequest.builder()
                 .title(title)
                 .description(description)

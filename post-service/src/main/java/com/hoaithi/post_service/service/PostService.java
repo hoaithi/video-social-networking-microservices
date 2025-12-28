@@ -103,8 +103,8 @@ public class PostService {
     public PostResponse updatePost(String postId, CreationPostRequest request, MultipartFile image) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new AppException(ErrorCode.POST_NOT_EXISTED));
-        if(!isPostOwner(post.getProfileId()))
-            throw new AppException(ErrorCode.UNAUTHORIZED);
+//        if(!isPostOwner(post.getProfileId()))
+//            throw new AppException(ErrorCode.UNAUTHORIZED);
         if (request.getContent() != null) {
             post.setContent(request.getContent());
         }

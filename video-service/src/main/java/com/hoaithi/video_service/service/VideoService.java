@@ -341,6 +341,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -356,6 +357,7 @@ public class VideoService {
     VideoRepository videoRepository;
     VideoMapper videoMapper;
     FileClient fileClient;
+    FileStorageService fileStorageService;
     CommentClient commentClient;
     HistoryRepository historyRepository;
     VideoReactionRepository videoReactionRepository;
@@ -553,7 +555,7 @@ public class VideoService {
     }
 
     @Transactional
-    public VideoResponse createVideo(MultipartFile videoFile, MultipartFile thumbnailFile, VideoCreationRequest request) {
+    public VideoResponse createVideo(MultipartFile videoFile, MultipartFile thumbnailFile, VideoCreationRequest request) throws IOException {
         log.info("=== Creating New Video ===");
         log.info("Title: {}", request.getTitle());
         log.info("Video file size: {} bytes ({} MB)",
@@ -573,7 +575,8 @@ public class VideoService {
         // Upload video file
         log.info("Starting video file upload to S3...");
         long videoUploadStart = System.currentTimeMillis();
-        String videoUrl = fileClient.uploadFile(videoFile);
+//        String videoUrl = fileClient.uploadFile(videoFile);
+        String videoUrl = fileStorageService.generatePresignedUrl(fileStorageService.uploadFile(videoFile));
         long videoUploadTime = System.currentTimeMillis() - videoUploadStart;
         video.setVideoUrl(videoUrl);
         log.info("Video file uploaded in {} ms - URL: {}", videoUploadTime, videoUrl);
@@ -581,7 +584,7 @@ public class VideoService {
         // Upload thumbnail file
         log.info("Starting thumbnail file upload to S3...");
         long thumbnailUploadStart = System.currentTimeMillis();
-        String thumbnailUrl = fileClient.uploadFile(thumbnailFile);
+        String thumbnailUrl = fileStorageService.generatePresignedUrl(fileStorageService.uploadFile(thumbnailFile));
         long thumbnailUploadTime = System.currentTimeMillis() - thumbnailUploadStart;
         video.setThumbnailUrl(thumbnailUrl);
         log.info("Thumbnail uploaded in {} ms - URL: {}", thumbnailUploadTime, thumbnailUrl);

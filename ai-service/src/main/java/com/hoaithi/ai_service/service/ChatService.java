@@ -21,6 +21,7 @@ import java.util.List;
 
 @Service
 public class ChatService {
+    private static final long MAX_DURATION_US = 5L * 60 * 1_000_000; // 5 phút
 
     private static final Logger log = LoggerFactory.getLogger(ChatService.class);
     private final ChatClient chatClient;
@@ -96,9 +97,24 @@ public class ChatService {
 
             recorder.start();
 
+            long startTimestamp = -1;
+
             while (true) {
                 var frame = grabber.grabSamples();
                 if (frame == null) break;
+
+                long currentTimestamp = grabber.getTimestamp();
+
+                // Lưu timestamp bắt đầu
+                if (startTimestamp < 0) {
+                    startTimestamp = currentTimestamp;
+                }
+
+                // Nếu vượt quá 5 phút → dừng
+                if (currentTimestamp - startTimestamp > MAX_DURATION_US) {
+                    break;
+                }
+
                 recorder.record(frame);
             }
 
