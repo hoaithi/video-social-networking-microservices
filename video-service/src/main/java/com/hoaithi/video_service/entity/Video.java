@@ -57,6 +57,14 @@ public class Video {
     @Column(name = "profile_id")
     private String profileId;
 
+    // Thêm vào Video.java
+    @Column(name = "valid_view_count")
+    @Builder.Default
+    private Long validViewCount = 0L; // View thực sự hợp lệ
+
+    @Column(name = "min_watch_duration")
+    private Double minWatchDuration; // Thời gian tối thiểu cần xem (30s hoặc 30% duration)
+
 
 
     // relationships

@@ -1,10 +1,13 @@
 package com.hoaithi.video_service.controller;
 
 import com.hoaithi.video_service.dto.request.VideoCreationRequest;
+import com.hoaithi.video_service.dto.request.ViewProgressRequest;
+import com.hoaithi.video_service.dto.request.ViewTrackingRequest;
 import com.hoaithi.video_service.dto.response.*;
 import com.hoaithi.video_service.repository.VideoRepository;
 import com.hoaithi.video_service.service.VideoService;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -231,6 +234,110 @@ public class VideoController {
                 .result(count)
                 .message("Video count retrieved successfully")
                 .build();
+    }
+
+
+    /**
+     * Record valid view - gọi khi đạt ngưỡng xem hợp lệ
+     */
+    @PostMapping("/{videoId}/valid-view")
+    public ApiResponse<Void> recordValidView(
+            @PathVariable String videoId,
+            @RequestBody ViewTrackingRequest request,
+            HttpServletRequest httpRequest) {
+
+        log.info("=== Received Valid View Request for Video: {} ===", videoId);
+
+        // Optional: Capture IP and User-Agent từ request
+        String ipAddress = getClientIpAddress(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
+
+        request.setIpAddress(ipAddress);
+        request.setUserAgent(userAgent);
+
+        videoService.recordValidView(videoId, request);
+
+        return ApiResponse.<Void>builder()
+                .message("Valid view recorded")
+                .build();
+    }
+
+    /**
+     * Update view progress - gọi định kỳ trong quá trình xem
+     */
+    @PostMapping("/{videoId}/view-progress")
+    public ApiResponse<Void> updateViewProgress(
+            @PathVariable String videoId,
+            @RequestBody ViewProgressRequest request) {
+
+        log.info("=== Received View Progress Update for Video: {} ===", videoId);
+
+        videoService.updateViewProgress(videoId, request);
+
+        return ApiResponse.<Void>builder()
+                .message("View progress updated")
+                .build();
+    }
+
+    /**
+     * Mark interaction (like, comment, share) - tự động count valid view
+     */
+    @PostMapping("/{videoId}/mark-interaction")
+    public ApiResponse<Void> markInteraction(
+            @PathVariable String videoId,
+            @RequestParam String sessionId) {
+
+        log.info("=== Received Interaction Mark for Video: {} ===", videoId);
+
+        videoService.markInteraction(videoId, sessionId);
+
+        return ApiResponse.<Void>builder()
+                .message("Interaction marked")
+                .build();
+    }
+
+    /**
+     * Get detailed view statistics
+     */
+    @GetMapping("/{videoId}/view-stats")
+    public ApiResponse<ViewStatsResponse> getViewStats(@PathVariable String videoId) {
+        log.info("=== Getting View Stats for Video: {} ===", videoId);
+
+        ViewStatsResponse stats = videoService.getViewStats(videoId);
+
+        return ApiResponse.<ViewStatsResponse>builder()
+                .result(stats)
+                .message("View stats retrieved successfully")
+                .build();
+    }
+
+    /**
+     * Helper method to get client IP address
+     */
+    private String getClientIpAddress(HttpServletRequest request) {
+        String[] headers = {
+                "X-Forwarded-For",
+                "Proxy-Client-IP",
+                "WL-Proxy-Client-IP",
+                "HTTP_X_FORWARDED_FOR",
+                "HTTP_X_FORWARDED",
+                "HTTP_X_CLUSTER_CLIENT_IP",
+                "HTTP_CLIENT_IP",
+                "HTTP_FORWARDED_FOR",
+                "HTTP_FORWARDED",
+                "HTTP_VIA",
+                "REMOTE_ADDR"
+        };
+
+        for (String header : headers) {
+            String ip = request.getHeader(header);
+            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+                // Get first IP if multiple
+                return ip.split(",")[0].trim();
+            }
+        }
+
+        return request.getRemoteAddr();
     }
 }
 

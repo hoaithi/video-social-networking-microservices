@@ -315,6 +315,8 @@ package com.hoaithi.video_service.service;
 import com.hoaithi.event.dto.VideoUploadedEvent;
 import com.hoaithi.video_service.dto.request.VideoCreationRequest;
 import com.hoaithi.video_service.dto.request.VideoUpdationRequest;
+import com.hoaithi.video_service.dto.request.ViewProgressRequest;
+import com.hoaithi.video_service.dto.request.ViewTrackingRequest;
 import com.hoaithi.video_service.dto.response.*;
 import com.hoaithi.video_service.entity.*;
 import com.hoaithi.video_service.enums.ReactionType;
@@ -365,6 +367,7 @@ public class VideoService {
     ProfileClient profileClient;
     SubClient subClient;
     KafkaTemplate<String, Object> kafkaTemplate;
+    VideoViewTrackingRepository viewTrackingRepository;
 
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("MMM yyyy");
     public PagedResponse<VideoResponse> searchVideos(
@@ -475,12 +478,57 @@ public class VideoService {
         return responses;
     }
 
+//    public VideoResponse getVideoById(String videoId) {
+//        log.info("=== Getting Video by ID: {} ===", videoId);
+//
+//        String currentProfileId = getCurrentUserId();
+//        Video video = videoRepository.findById(videoId)
+//                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
+//        boolean hasMembership = profileClient.checkMembership(video.getProfileId()).getResult();
+//        if(!currentProfileId.equals(video.getProfileId())){
+//            if(video.isPremium() && !hasMembership){
+//                log.warn("Access denied to premium video: {} for profile: {}", videoId, currentProfileId);
+//                throw new AppException(ErrorCode.PREMIUM_VIDEO_ACCESS_DENIED);
+//            }
+//        }
+//
+//
+//        log.info("Video found - Title: {}, Current views: {}", video.getTitle(), video.getViewCount());
+//
+//        video.setViewCount(video.getViewCount()+1);
+//        video.setCommentCount(commentClient.countComment(videoId).getResult().getCommentCount());
+//
+//        log.info("View count updated to: {}", video.getViewCount());
+//
+//        if(!historyRepository.existsByProfileIdAndVideoId(currentProfileId, videoId)){
+//            historyRepository.save(VideoHistory.builder()
+//                    .video(video)
+//                    .profileId(currentProfileId)
+//                    .build());
+//            log.info("Video history recorded for profile: {}", currentProfileId);
+//        }
+//
+//        VideoResponse response = videoMapper.toVideoResponse(videoRepository.save(video));
+//        ProfileResponse profileResponse = profileClient.getProfileById(response.getProfileId()).getResult();
+//        response.setProfileName(profileResponse.getFullName());
+//        response.setProfileImage(profileResponse.getAvatarUrl());
+//
+//        log.info("=== Video Retrieved Successfully ===");
+//
+//        // push event
+//
+//
+//        return response;
+//    }
+
     public VideoResponse getVideoById(String videoId) {
         log.info("=== Getting Video by ID: {} ===", videoId);
 
         String currentProfileId = getCurrentUserId();
         Video video = videoRepository.findById(videoId)
                 .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
+
+        // Check premium access
         boolean hasMembership = profileClient.checkMembership(video.getProfileId()).getResult();
         if(!currentProfileId.equals(video.getProfileId())){
             if(video.isPremium() && !hasMembership){
@@ -489,14 +537,16 @@ public class VideoService {
             }
         }
 
-
         log.info("Video found - Title: {}, Current views: {}", video.getTitle(), video.getViewCount());
 
-        video.setViewCount(video.getViewCount()+1);
+        // ❌ REMOVED: auto increment view count
+        // View counting is now handled by view tracking system (recordValidView)
+        // video.setViewCount(video.getViewCount()+1);
+
+        // Update comment count
         video.setCommentCount(commentClient.countComment(videoId).getResult().getCommentCount());
 
-        log.info("View count updated to: {}", video.getViewCount());
-
+        // Save video history (không phải view count)
         if(!historyRepository.existsByProfileIdAndVideoId(currentProfileId, videoId)){
             historyRepository.save(VideoHistory.builder()
                     .video(video)
@@ -505,15 +555,14 @@ public class VideoService {
             log.info("Video history recorded for profile: {}", currentProfileId);
         }
 
+        // Save updated video (chỉ update comment count, không update view count)
         VideoResponse response = videoMapper.toVideoResponse(videoRepository.save(video));
         ProfileResponse profileResponse = profileClient.getProfileById(response.getProfileId()).getResult();
         response.setProfileName(profileResponse.getFullName());
         response.setProfileImage(profileResponse.getAvatarUrl());
 
         log.info("=== Video Retrieved Successfully ===");
-
-        // push event
-
+        log.info("Note: View count will be incremented by view tracking system when user watches 30s/30%/interacts");
 
         return response;
     }
@@ -1631,5 +1680,232 @@ public class VideoService {
         }
         long engagement = (likes != null ? likes : 0L) + (comments != null ? comments : 0L);
         return Math.round((engagement * 100.0 / views) * 100.0) / 100.0;
+    }
+
+
+    /**
+     * Record valid view theo tiêu chuẩn YouTube
+     */
+    @Transactional
+    public void recordValidView(String videoId, ViewTrackingRequest request) {
+        log.info("=== Recording Valid View for Video: {} ===", videoId);
+        log.info("Session: {}, Duration: {}s, Percentage: {}%, Interacted: {}",
+                request.getSessionId(),
+                request.getWatchDuration(),
+                request.getWatchPercentage(),
+                request.getHasInteracted());
+
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
+
+        String profileId = getCurrentUserId();
+
+        // Check if this session already counted as valid view
+        Optional<VideoViewTracking> existingTracking = viewTrackingRepository
+                .findByVideoIdAndSessionId(videoId, request.getSessionId());
+
+        // 🔥 FIX: Check if already counted BEFORE updating
+        boolean wasAlreadyValidView = existingTracking.isPresent()
+                && existingTracking.get().getIsValidView();
+
+        if (wasAlreadyValidView) {
+            log.info("✅ View already counted for session: {}", request.getSessionId());
+            return;
+        }
+
+        // Calculate if view is valid: 30s OR 30% OR interaction
+        double minWatchTime = Math.min(30.0, video.getDuration() * 0.3);
+        boolean isValidView = request.getWatchDuration() >= minWatchTime
+                || request.getWatchPercentage() >= 30.0
+                || request.getHasInteracted();
+
+        log.info("Min watch time required: {}s, Is valid: {}", minWatchTime, isValidView);
+
+        if (isValidView) {
+            // Update or create tracking
+            VideoViewTracking tracking;
+            if (existingTracking.isPresent()) {
+                tracking = existingTracking.get();
+                log.info("Updating existing tracking");
+            } else {
+                tracking = VideoViewTracking.builder()
+                        .videoId(videoId)
+                        .profileId(profileId)
+                        .sessionId(request.getSessionId())
+                        .videoDuration(video.getDuration())
+                        .startedAt(LocalDateTime.now())
+                        .ipAddress(request.getIpAddress())
+                        .userAgent(request.getUserAgent())
+                        .build();
+                log.info("Creating new tracking");
+            }
+
+            tracking.setWatchDuration(request.getWatchDuration());
+            tracking.setWatchPercentage(request.getWatchPercentage());
+            tracking.setHasInteracted(request.getHasInteracted());
+            tracking.setIsValidView(true);
+            tracking.setCompletedAt(LocalDateTime.now());
+            tracking.setLastUpdated(LocalDateTime.now());
+
+            viewTrackingRepository.save(tracking);
+
+            // 🔥 FIX: Increment view count (we already checked it wasn't counted above)
+            video.setViewCount(video.getViewCount() + 1);
+            videoRepository.save(video);
+
+            log.info("✅ Valid view counted - Total views: {}", video.getViewCount());
+        } else {
+            log.info("❌ View not valid yet - needs more watch time or interaction");
+        }
+    }
+
+    /**
+     * Update view progress (gọi mỗi 10% hoặc mỗi 5-10 giây)
+     */
+    @Transactional
+    public void updateViewProgress(String videoId, ViewProgressRequest request) {
+        log.info("=== Updating View Progress for Video: {} ===", videoId);
+        log.info("Session: {}, Duration: {}s, Percentage: {}%",
+                request.getSessionId(),
+                request.getWatchDuration(),
+                request.getWatchPercentage());
+
+        String profileId = getCurrentUserId();
+
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
+
+        // 🔥 FIX: Use UPSERT - atomic operation, no race condition
+        viewTrackingRepository.upsertViewProgress(
+                videoId,
+                profileId,
+                request.getSessionId(),
+                request.getWatchDuration(),
+                request.getWatchPercentage(),
+                video.getDuration()
+        );
+
+        log.info("✅ Progress updated/created for session: {}", request.getSessionId());
+    }
+
+    /**
+     * Mark interaction (like, comment, share) - tự động count valid view
+     */
+    @Transactional
+    public void markInteraction(String videoId, String sessionId) {
+        log.info("=== Marking Interaction for Video: {} ===", videoId);
+        log.info("SessionId received: {}", sessionId);
+
+        Optional<VideoViewTracking> tracking = viewTrackingRepository
+                .findByVideoIdAndSessionId(videoId, sessionId);
+
+        log.info("🔍 Tracking found: {}", tracking.isPresent());
+
+        if (tracking.isPresent()) {
+            VideoViewTracking t = tracking.get();
+
+            // ✅ Check BEFORE updating
+            boolean wasAlreadyValidView = t.getIsValidView();
+
+            log.info("📊 Tracking details - isValidView: {}, hasInteracted: {}, watchDuration: {}s",
+                    t.getIsValidView(), t.getHasInteracted(), t.getWatchDuration());
+
+            t.setHasInteracted(true);
+            t.setLastUpdated(LocalDateTime.now());
+
+            // If not yet counted as valid view, count it now
+            if (!wasAlreadyValidView) {
+                t.setIsValidView(true);
+                t.setCompletedAt(LocalDateTime.now());
+
+                Video video = videoRepository.findById(videoId)
+                        .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
+
+                long oldCount = video.getViewCount();
+
+                // ✅ FIX: Increment and SAVE
+                video.setViewCount(video.getViewCount() + 1);
+                videoRepository.save(video);
+
+                log.info("✅ Valid view counted due to interaction - Old count: {}, New count: {}",
+                        oldCount, video.getViewCount());
+            } else {
+                log.info("⚠️ View already counted for this session (wasAlreadyValidView = true)");
+            }
+
+            viewTrackingRepository.save(t);
+            log.info("💾 Tracking saved successfully");
+
+        } else {
+            log.warn("❌ No tracking found for session: {}, creating new tracking", sessionId);
+
+            Video video = videoRepository.findById(videoId)
+                    .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
+
+            String profileId = getCurrentUserId();
+
+            long oldCount = video.getViewCount();
+
+            VideoViewTracking newTracking = VideoViewTracking.builder()
+                    .videoId(videoId)
+                    .profileId(profileId)
+                    .sessionId(sessionId)
+                    .videoDuration(video.getDuration())
+                    .watchDuration(0.0)
+                    .watchPercentage(0.0)
+                    .hasInteracted(true)
+                    .isValidView(true)
+                    .startedAt(LocalDateTime.now())
+                    .lastUpdated(LocalDateTime.now())
+                    .completedAt(LocalDateTime.now())
+                    .build();
+
+            viewTrackingRepository.save(newTracking);
+            log.info("💾 New tracking created and saved");
+
+            // Increment view count
+            video.setViewCount(video.getViewCount() + 1);
+            videoRepository.save(video);
+
+            log.info("✅ New tracking created with interaction - Old count: {}, New count: {}",
+                    oldCount, video.getViewCount());
+        }
+
+        log.info("=== Mark Interaction Completed ===");
+    }
+
+    /**
+     * Get detailed view statistics
+     */
+    public ViewStatsResponse getViewStats(String videoId) {
+        log.info("=== Getting View Stats for Video: {} ===", videoId);
+
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_EXISTED));
+
+        Long validViews = viewTrackingRepository.countValidViewsByVideoId(videoId);
+        Long uniqueViewers = viewTrackingRepository.countUniqueViewersByVideoId(videoId);
+        Double avgWatchPercentage = viewTrackingRepository.getAverageWatchPercentageByVideoId(videoId);
+        Double totalWatchDuration = viewTrackingRepository.getTotalWatchDurationByVideoId(videoId);
+
+        // Convert seconds to hours
+        Double totalWatchHours = totalWatchDuration != null ? totalWatchDuration / 3600.0 : 0.0;
+
+        // Calculate valid view rate
+        Double validViewRate = video.getViewCount() > 0
+                ? (validViews * 100.0) / video.getViewCount()
+                : 0.0;
+
+        log.info("Stats - Total: {}, Valid: {}, Unique: {}, Avg Watch: {}%, Valid Rate: {}%",
+                video.getViewCount(), validViews, uniqueViewers, avgWatchPercentage, validViewRate);
+
+        return ViewStatsResponse.builder()
+                .totalViews(video.getViewCount())
+                .validViews(validViews)
+                .uniqueViewers(uniqueViewers)
+                .averageWatchPercentage(avgWatchPercentage != null ? Math.round(avgWatchPercentage * 100.0) / 100.0 : 0.0)
+                .totalWatchDuration(Math.round(totalWatchHours * 100.0) / 100.0)
+                .validViewRate(Math.round(validViewRate * 100.0) / 100.0)
+                .build();
     }
 }
