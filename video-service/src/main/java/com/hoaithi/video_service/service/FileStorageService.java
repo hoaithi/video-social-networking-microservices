@@ -78,8 +78,8 @@ public class FileStorageService {
 
     private final S3Client s3Client;
 
-    // Kích thước mỗi part cho multipart upload (10MB)
-    private static final long PART_SIZE = 10 * 1024 * 1024; // 10MB
+    // Kích thước mỗi part cho multipart upload (30MB)
+    private static final long PART_SIZE = 30 * 1024 * 1024; // 30MB
     // Ngưỡng để sử dụng multipart upload (20MB)
     private static final long MULTIPART_THRESHOLD = 20 * 1024 * 1024; // 20MB
 
